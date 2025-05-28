@@ -41,6 +41,7 @@ class UserManager(BaseUserManager):
         user.is_superuser = True
         user.is_staff = True
         user.kind = UserKind.SUPER_ADMIN
+        user.is_verified = True
         user.save(using=self._db)
 
         return user
@@ -71,6 +72,9 @@ class User(AbstractBaseUser, BaseModelWithUID, PermissionsMixin):
         max_length=20,
         choices=UserKind.choices,
         default=UserKind.UNDEFINED,
+    )
+    is_verified = models.BooleanField(
+        default=False,
     )
 
     objects = UserManager()

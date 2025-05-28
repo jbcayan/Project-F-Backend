@@ -8,11 +8,11 @@ def post_save_create_profile_receiver(sender, instance, created, **kwargs):
 
     if created:
         UserProfile.objects.create(user=instance)
-        logger.info(f"UserProfile created for new user: {instance.username}")
+        logger.info(f"UserProfile created for new user: {instance.email}")
     else:
         try:
             profile = UserProfile.objects.get(user=instance)
             profile.save()
         except UserProfile.DoesNotExist:
             UserProfile.objects.create(user=instance)
-            logger.info(f"UserProfile created for existing user: {instance.username}")
+            logger.info(f"UserProfile created for existing user: {instance.email}")
