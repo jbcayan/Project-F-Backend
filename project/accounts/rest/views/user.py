@@ -77,9 +77,9 @@ class UserLoginView(generics.CreateAPIView):
     description="End Point for user Profile, Authentication Required",
 )
 class UserProfileView(generics.RetrieveUpdateAPIView):
-    available_permissions_classes = (
-        IsAdmin,
+    available_permission_classes = (
         IsSuperAdmin,
+        IsAdmin,
         IsEndUser,
     )
     permission_classes = (CheckAnyPermission,)
