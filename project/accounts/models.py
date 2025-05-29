@@ -88,6 +88,7 @@ class User(AbstractBaseUser, BaseModelWithUID, PermissionsMixin):
     class Meta:
         verbose_name = "System User"
         verbose_name_plural = "System Users"
+        ordering = ("-created_at",)
 
 
 
