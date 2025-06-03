@@ -199,3 +199,11 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        # "LOCATION": "redis://localhost:6379",
+        "LOCATION": "redis://redis_cache:6379",
+    }
+}
