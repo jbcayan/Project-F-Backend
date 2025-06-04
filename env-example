@@ -5,14 +5,24 @@ SECRET_KEY="django-insecure-1@!@g5@_!@!@_!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!"
 DEBUG=True
 ALLOWED_HOSTS="localhost, 127.0.0.1"
 
-PRODUCTION=False
-DEVELOPMENT=False
+DEBUG=True
+ALLOWED_HOSTS="localhost, 127.0.0.1"
+
+# local, development, production
+DJANGO_ENV="local"
 
 DATABASE_TYPE="postgres"
-
 DB_NAME="project-f-db"
 DB_USER="postgres"
-DB_PASSWORD="1234"
-DB_HOST="localhost"
-#DB_HOST="host.docker.internal"
+DB_PASSWORD="2244"
 DB_PORT="5432"
+DB_HOST="host.docker.internal"
+#DB_HOST="localhost"
+
+
+EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST="smtp.gmail.com"
+EMAIL_USE_TLS=True
+EMAIL_PORT=587
+EMAIL_HOST_USER="jbc.@gmail.com"
+EMAIL_HOST_PASSWORD=""
