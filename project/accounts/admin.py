@@ -1,17 +1,21 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-
 from .models import User, UserProfile
 
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Profile'
+    fk_name = 'user'
 
-@admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class CustomUserAdmin(BaseUserAdmin):
     model = User
+    inlines = [UserProfileInline]
     list_display = ('email', 'is_staff', 'is_superuser', 'is_verified', 'kind', 'is_active')
     list_filter = ('is_staff', 'is_superuser', 'is_verified', 'kind', 'is_active')
     search_fields = ('email', 'phone_number')
-    ordering = ('email',)
+    ordering = ('-created_at',)
     readonly_fields = ('last_login',)
 
     fieldsets = (
@@ -30,9 +34,10 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
+    def get_inline_instances(self, request, obj=None):
+        if obj is None:
+            return []
+        return super().get_inline_instances(request, obj)
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    model = UserProfile
-    list_display = ('user', 'full_name')
-    search_fields = ('user__email', 'full_name')
+# ✅ Register the user model with the custom admin class
+admin.site.register(User, CustomUserAdmin)

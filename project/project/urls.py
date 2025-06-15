@@ -13,6 +13,7 @@ urlpatterns = [
     path('', HealthCheckView.as_view(), name='health_check'),
     path('admin/', admin.site.urls),
     path('users', include('accounts.rest.urls.user')),
+    path('gallery', include('gallery.rest.urls')),
 ]
 
 if settings.DEBUG:
