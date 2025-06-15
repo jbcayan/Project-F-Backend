@@ -21,13 +21,17 @@ class Gallery(BaseModelWithUID):
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(
         "accounts.User",
-        on_delete=models.CASCADE,
-        related_name='created_galleries'
+        on_delete=models.SET_NULL,
+        related_name='created_galleries',
+        null=True,
+        blank=True
     )
     updated_by = models.ForeignKey(
         "accounts.User",
-        on_delete=models.CASCADE,
-        related_name='updated_galleries'
+        on_delete=models.SET_NULL,
+        related_name='updated_galleries',
+        null=True,
+        blank=True
     )
     file_type = models.CharField(
         max_length=10,

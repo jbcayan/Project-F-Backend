@@ -23,7 +23,6 @@ def validate_password_complexity(value):
         raise ValidationError("Password must contain: " + ", ".join(errors) + ".")
 
 
-
 def generate_code():
     alphabet = string.ascii_uppercase  # 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     prefix = ''.join(random.choices(alphabet, k=4))
