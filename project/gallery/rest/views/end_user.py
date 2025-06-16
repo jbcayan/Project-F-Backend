@@ -10,15 +10,16 @@ from common.permission import (
 from gallery.rest.serializers.end_user import (
     EndUserEditRequestCreateSerializer,
     EndUserEditRequestRetrieveSerializer,
-    EditRequestMinimalListSerializer
+    EditRequestMinimalListSerializer, SimpleGallerySerializer
 )
-from gallery.models import EditRequest
+from gallery.models import EditRequest, Gallery
+
 
 class EndUserEditRequestView(generics.ListCreateAPIView):
     available_permission_classes = (
         IsSuperAdmin,
         IsAdmin,
-        IsEndUser
+        IsEndUser,
     )
     permission_classes = (CheckAnyPermission,)
 
@@ -41,10 +42,25 @@ class EndUserEditRequestRetrieveView(generics.RetrieveAPIView):
     )
     permission_classes = (CheckAnyPermission,)
     serializer_class = EndUserEditRequestRetrieveSerializer
+    lookup_field = 'uid'
 
 
     def get_queryset(self, *args, **kwargs):
         return EditRequest.objects.filter(
-            uid=self.kwargs['uid'],
+            # uid=self.kwargs['uid'],
             user=self.request.user
         )
+
+
+class EndUserGalleyListView(generics.ListAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = SimpleGallerySerializer
+
+    def get_queryset(self, *args, **kwargs):
+        gallery = Gallery().get_all_actives()
+        return gallery

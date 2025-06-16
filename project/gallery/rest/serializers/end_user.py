@@ -7,7 +7,7 @@ from gallery.models import Gallery, EditRequest, EditRequestGallery
 class SimpleGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = Gallery
-        fields = ["uid", "title", "code", "file_type", "file"]
+        fields = ["uid", "title", "code", "description", "file_type", "file"]
 
 class EditRequestMinimalListSerializer(serializers.ModelSerializer):
     media_files = SimpleGallerySerializer(many=True, read_only=True)
@@ -20,6 +20,7 @@ class EndUserEditRequestMediaFileSerializer(serializers.Serializer):
         queryset=Gallery.objects.filter(status=Status.ACTIVE),
         slug_field='uid',
         required=True,
+        write_only=True,
         error_messages={
             'does_not_exist': 'Invalid or inactive gallery UID provided.'
         }
@@ -28,7 +29,10 @@ class EndUserEditRequestMediaFileSerializer(serializers.Serializer):
 
 
 class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
-    media_files = EndUserEditRequestMediaFileSerializer(many=True)
+    media_files = EndUserEditRequestMediaFileSerializer(
+        many=True,
+        write_only=True
+    )
 
     class Meta:
         model = EditRequest
@@ -49,7 +53,11 @@ class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         media_files = validated_data.pop('media_files')
-        edit_request = EditRequest.objects.create(**validated_data)
+        user = self.context['request'].user
+        edit_request = EditRequest.objects.create(
+            user=user,
+            **validated_data
+        )
         for media_file in media_files:
             EditRequestGallery.objects.create(
                 edit_request=edit_request,
