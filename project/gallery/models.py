@@ -5,7 +5,7 @@ from django.db import models
 
 from common.helpers import unique_file_code, unique_request_code
 from common.models import BaseModelWithUID
-from gallery.choices import FileTypes, RequestStatus
+from gallery.choices import FileTypes, RequestStatus, RequestType
 
 User = get_user_model()
 
@@ -105,6 +105,13 @@ class EditRequest(BaseModelWithUID):
         blank=True,
         null=True
     )
+    request_type = models.CharField(
+        max_length=20,
+        choices=RequestType,
+        default=RequestType.OTHER,
+        blank=True,
+        null=True,
+    )
 
     def save(self, *args, **kwargs):
         if not self.code:
@@ -167,7 +174,7 @@ class EditRequestGallery(models.Model):
         unique_together = ('edit_request', 'gallery')
 
     def __str__(self):
-        return f"{self.edit_request} | {self.gallery.code}"
+        return f"{self.edit_request} | {self.edit_request.user}"
 
 
     class Meta:

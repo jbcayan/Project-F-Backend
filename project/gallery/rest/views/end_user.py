@@ -1,6 +1,8 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
+
 
 from common.permission import (
     CheckAnyPermission,
@@ -14,13 +16,15 @@ from gallery.models import EditRequest, Gallery
 from gallery.rest.serializers.end_user import (
     EndUserEditRequestCreateSerializer,
     EndUserEditRequestRetrieveSerializer,
-    EditRequestMinimalListSerializer, SimpleGallerySerializer
+    EditRequestMinimalListSerializer,
+    SimpleGallerySerializer,
+    PhotoEditRequestSerializer
 )
 
 
 @extend_schema(
     summary="Get all edit requests for the end user",
-    tags=["END USER"]
+    # tags=["End User"]
 )
 class EndUserEditRequestView(generics.ListCreateAPIView):
     available_permission_classes = (
@@ -42,7 +46,7 @@ class EndUserEditRequestView(generics.ListCreateAPIView):
 
 @extend_schema(
     summary="Get a specific edit request for the end user",
-    tags=["END USER"]
+    # tags=["End User"]
 )
 class EndUserEditRequestRetrieveView(generics.RetrieveAPIView):
     available_permission_classes = (
@@ -63,7 +67,7 @@ class EndUserEditRequestRetrieveView(generics.RetrieveAPIView):
 
 @extend_schema(
     summary="Get all active items from the gallery, Filter included",
-    tags=["END USER"]
+    tags=["End User"]
 )
 class EndUserGalleyListView(generics.ListAPIView):
     available_permission_classes = (
@@ -82,7 +86,7 @@ class EndUserGalleyListView(generics.ListAPIView):
 
 @extend_schema(
     summary="Get all active images from the gallery",
-    tags=["END USER"]
+    tags=["End User"]
 )
 class EndUserGalleyImageListView(generics.ListAPIView):
     available_permission_classes = (
@@ -97,3 +101,23 @@ class EndUserGalleyImageListView(generics.ListAPIView):
         return Gallery().get_all_actives().filter(
             file_type=FileTypes.IMAGE
         )
+
+@extend_schema(
+    summary="Create a photo edit request",
+    tags=["End User"]
+)
+class EndUserPhotoEditRequestView(generics.CreateAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser
+    )
+    permission_classes = (CheckAnyPermission,)
+
+    def post(self, request):
+        print(request.data)
+        serializer = PhotoEditRequestSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            edit_request = serializer.save()
+            return Response({'message': 'Edit request submitted successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

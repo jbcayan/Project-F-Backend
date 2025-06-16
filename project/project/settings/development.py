@@ -36,7 +36,7 @@ else:  # Assuming PostgreSQL as the other option
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": config("DB_NAME", default="throwin"),
+            "NAME": config("DB_NAME", default="alibi_db"),
             "USER": config("DB_USER", default="postgres"),
             "PASSWORD": config("DB_PASSWORD", default="postgres"),
             "HOST": config("DB_HOST", default="127.0.0.1"),
@@ -51,7 +51,7 @@ else:  # Assuming PostgreSQL as the other option
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://localhost:6379",
-        # "LOCATION": "redis://redis_cache:6379",
+        # "LOCATION": "redis://localhost:6379",
+        "LOCATION": "redis://redis_cache:6379",
     }
 }
