@@ -70,7 +70,14 @@ class EditRequest(BaseModelWithUID):
     media_files = models.ManyToManyField(
         "Gallery",
         through='EditRequestGallery',
-        related_name='edit_requests'
+        related_name='edit_requests',
+        blank=True,
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text='Please provide a title for the request',
+        blank=True,
+        null=True
     )
     description = models.TextField(
         help_text='Please describe the overall request'
@@ -87,6 +94,16 @@ class EditRequest(BaseModelWithUID):
     )
     desire_delivery_date = models.DateTimeField(
         help_text='When would you like the changes delivered?'
+    )
+    shipping_address = models.TextField(
+        help_text='Please provide the shipping address',
+        blank=True,
+        null=True
+    )
+    additional_notes = models.TextField(
+        help_text='Please provide any additional notes',
+        blank=True,
+        null=True
     )
 
     def save(self, *args, **kwargs):
@@ -111,7 +128,21 @@ class EditRequestGallery(models.Model):
     gallery = models.ForeignKey(
         "Gallery",
         on_delete=models.CASCADE,
-        related_name='requested_in'
+        related_name='requested_in',
+        blank=True,
+        null=True,
+        help_text='Please select the gallery you would like to edit'
+    )
+    file_type = models.CharField(
+        max_length=10,
+        choices=FileTypes,
+        default=FileTypes.OTHER
+    )
+    user_request_file = models.FileField(
+        upload_to='user-requests/',
+        blank=True,
+        null=True,
+        help_text='Please upload the file you would like to edit'
     )
     individual_note = models.TextField(
         blank=True,
