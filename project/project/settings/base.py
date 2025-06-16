@@ -146,8 +146,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': "Project F API's",
-    'DESCRIPTION': "This is a sample backend API for Project F. Where you can find all the endpoints and their functionalities.",
+    'TITLE': "Albi API's",
+    'DESCRIPTION': "This is backend for Albi. Where you can find all the endpoints and their functionalities.",
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

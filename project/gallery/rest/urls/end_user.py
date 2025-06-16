@@ -3,7 +3,9 @@ from django.urls import path
 from gallery.rest.views.end_user import (
     EndUserEditRequestView,
     EndUserEditRequestRetrieveView,
-    EndUserGalleyListView
+    EndUserGalleyListView,
+    EndUserGalleyImageListView,
+
 )
 
 urlpatterns = [
@@ -21,5 +23,10 @@ urlpatterns = [
         "",
         EndUserGalleyListView.as_view(),
         name="end-user-gallery-list"
+    ),
+    path(
+        "/images",
+        EndUserGalleyImageListView.as_view(),
+        name="end-user-gallery-image-list"
     ),
 ]

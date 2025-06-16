@@ -3,9 +3,9 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-admin.site.site_header = "Project F Admin"
-admin.site.site_title = "Project F Admin Panel"
-admin.site.index_title = "Welcome to Project F Panel"
+admin.site.site_header = "Albi Admin"
+admin.site.site_title = "Albi Admin Panel"
+admin.site.index_title = "Welcome to Albi Admin Dashboard Panel"
 
 from .health_check import HealthCheckView
 

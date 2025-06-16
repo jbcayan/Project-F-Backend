@@ -11,6 +11,7 @@ from drf_spectacular.utils import extend_schema
 @extend_schema(
     summary="Gallery list and create for Admin Users only",
     request=GalleryUploadSerializer,
+    tags=["Admin"],
 )
 class GalleryListCreateView(generics.ListCreateAPIView):
     available_permission_classes = (
