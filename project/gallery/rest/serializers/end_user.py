@@ -105,7 +105,12 @@ class EndUserEditRequestRetrieveSerializer(serializers.ModelSerializer):
 class SimpleFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = EditRequestGallery
-        fields = ["user_request_file"]
+        fields = [
+            "file_type",
+            "user_request_file",
+            "file_status",
+            "admin_response_file",
+        ]
 
 class PhotoEditRequestSerializer(serializers.ModelSerializer):
     request_files = serializers.ListField(
@@ -143,6 +148,21 @@ class PhotoEditRequestSerializer(serializers.ModelSerializer):
                 file_type=FileTypes.IMAGE,
             )
         return edit_request
+
+class PhotoEditRequestListSerializer(serializers.ModelSerializer):
+    files = SimpleFileSerializer(many=True, read_only=True, source='request_files')
+
+    class Meta:
+        model = EditRequest
+        fields = [
+            "uid",
+            "description",
+            "special_note",
+            "request_status",
+            'request_type',
+            "desire_delivery_date",
+            "files"
+        ]
 
 
 class VideoAudioEditRequestSerializer(serializers.ModelSerializer):

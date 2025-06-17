@@ -10,7 +10,7 @@ from common.permission import (
     IsEndUser,
     IsSuperAdmin,
 )
-from gallery.choices import FileTypes
+from gallery.choices import FileTypes, RequestType
 from gallery.filters import GalleryFilter
 from gallery.models import EditRequest, Gallery
 from gallery.rest.serializers.end_user import (
@@ -18,7 +18,7 @@ from gallery.rest.serializers.end_user import (
     EndUserEditRequestRetrieveSerializer,
     EditRequestMinimalListSerializer,
     SimpleGallerySerializer,
-    PhotoEditRequestSerializer
+    PhotoEditRequestSerializer, PhotoEditRequestListSerializer
 )
 
 
@@ -103,10 +103,10 @@ class EndUserGalleyImageListView(generics.ListAPIView):
         )
 
 @extend_schema(
-    summary="Create a photo edit request",
+    summary="User can submit a photo request and get a list of all photo requests submitted by the user",
     tags=["End User"]
 )
-class EndUserPhotoEditRequestView(generics.CreateAPIView):
+class EndUserPhotoEditRequestView(generics.ListCreateAPIView):
     available_permission_classes = (
         IsSuperAdmin,
         IsAdmin,
@@ -114,10 +114,30 @@ class EndUserPhotoEditRequestView(generics.CreateAPIView):
     )
     permission_classes = (CheckAnyPermission,)
 
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return PhotoEditRequestSerializer
+        return PhotoEditRequestListSerializer
+
+    def get_queryset(self, *args, **kwargs):
+        try:
+            return EditRequest.objects.filter(
+                user=self.request.user,
+                request_type=RequestType.PHOTO_REQUEST
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found for this user.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
     def post(self, request):
-        print(request.data)
-        serializer = PhotoEditRequestSerializer(data=request.data, context={'request': request})
+        serializer = PhotoEditRequestSerializer(
+            data=request.data,
+            context={'request': request}
+        )
         if serializer.is_valid():
-            edit_request = serializer.save()
-            return Response({'message': 'Edit request submitted successfully.'}, status=status.HTTP_201_CREATED)
+            serializer.save()
+            return Response({
+                'message': 'Edit request submitted successfully.'
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
