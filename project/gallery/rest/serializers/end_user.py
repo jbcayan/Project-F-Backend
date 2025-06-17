@@ -149,7 +149,7 @@ class PhotoEditRequestSerializer(serializers.ModelSerializer):
             )
         return edit_request
 
-class PhotoEditRequestListSerializer(serializers.ModelSerializer):
+class EditRequestListSerializer(serializers.ModelSerializer):
     files = SimpleFileSerializer(many=True, read_only=True, source='request_files')
 
     class Meta:
@@ -184,6 +184,7 @@ class VideoAudioEditRequestSerializer(serializers.ModelSerializer):
             "special_note",
             "request_status",
             "desire_delivery_date",
+            "edit_type",
             "request_files"
         ]
         read_only_fields = [
@@ -203,7 +204,6 @@ class VideoAudioEditRequestSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         edit_request = EditRequest.objects.create(
             user=user,
-            request_type=RequestType.VIDEO_REQUEST,
             **validated_data
         )
         for file in request_files:

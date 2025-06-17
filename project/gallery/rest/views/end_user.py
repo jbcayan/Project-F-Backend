@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
@@ -18,7 +19,9 @@ from gallery.rest.serializers.end_user import (
     EndUserEditRequestRetrieveSerializer,
     EditRequestMinimalListSerializer,
     SimpleGallerySerializer,
-    PhotoEditRequestSerializer, PhotoEditRequestListSerializer
+    PhotoEditRequestSerializer,
+    EditRequestListSerializer,
+    VideoAudioEditRequestSerializer,
 )
 
 
@@ -117,7 +120,7 @@ class EndUserPhotoEditRequestView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return PhotoEditRequestSerializer
-        return PhotoEditRequestListSerializer
+        return EditRequestListSerializer
 
     def get_queryset(self, *args, **kwargs):
         try:
@@ -132,6 +135,48 @@ class EndUserPhotoEditRequestView(generics.ListCreateAPIView):
 
     def post(self, request):
         serializer = PhotoEditRequestSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Edit request submitted successfully.'
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@extend_schema(
+    summary="User can submit a video or audio request and get a list of all video or audio requests submitted by the user",
+    tags=["End User"]
+)
+class EndUserVideoAudioEditRequestView(generics.ListCreateAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser
+    )
+    permission_classes = (CheckAnyPermission,)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return VideoAudioEditRequestSerializer
+        return EditRequestListSerializer
+
+    def get_queryset(self, *args, **kwargs):
+        try:
+            return EditRequest.objects.filter(
+                user=self.request.user
+                ).filter(
+                    Q(request_type=RequestType.VIDEO_REQUEST) |
+                    Q(request_type=RequestType.AUDIO_REQUEST)
+                )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found for this user.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request):
+        serializer = VideoAudioEditRequestSerializer(
             data=request.data,
             context={'request': request}
         )
