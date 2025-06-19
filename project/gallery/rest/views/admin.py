@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.response import Response
 
@@ -8,8 +9,6 @@ from gallery.choices import RequestType
 from gallery.filters import GalleryFilter
 from gallery.models import Gallery, EditRequest
 from gallery.rest.serializers.admin import GalleryUploadSerializer
-from drf_spectacular.utils import extend_schema
-
 from gallery.rest.serializers.end_user import EditRequestListSerializer
 
 

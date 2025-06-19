@@ -1,11 +1,10 @@
 from django.urls import path
+
 from gallery.rest.views.admin import (
     GalleryListCreateView,
     AdminPhotoEditRequestView,
     AdminVideoAudioEditRequestView
 )
-
-
 
 urlpatterns = [
     path(

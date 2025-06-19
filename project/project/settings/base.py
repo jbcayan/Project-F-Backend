@@ -31,7 +31,8 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'rest_framework',
     'django_filters',
-    'corsheaders'
+    'corsheaders',
+    "django_celery_beat",
 ]
 
 LOCAL_APPS = [
@@ -146,8 +147,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': "Albi API's",
-    'DESCRIPTION': "This is backend for Albi. Where you can find all the endpoints and their functionalities.",
+    'TITLE': "Alibi API's",
+    'DESCRIPTION': "This is backend for Alibi. Where you can find all the endpoints and their functionalities.",
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

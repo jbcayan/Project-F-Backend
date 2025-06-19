@@ -8,7 +8,7 @@ cd /app/project
 
 # Wait for Redis to be ready
 echo "Waiting for Redis..."
-while ! nc -z redis_cache 6379; do
+while ! nc -z alibi_redis 6379; do
   sleep 1
 done
 echo "Redis is up!"
@@ -26,12 +26,12 @@ echo "Collecting static files..."
 python manage.py collectstatic --noinput --clear -v 2 || echo "Static files collection failed but continuing."
 
 # Start Celery worker in the background
-#echo "Starting Celery worker..."
-#celery -A project worker --loglevel=info &
+echo "Starting Celery worker..."
+celery -A project worker --loglevel=info &
 #
 ## Start Celery beat in the background
-#echo "Starting Celery beat..."
-#celery -A project beat --loglevel=info &
+echo "Starting Celery beat..."
+celery -A project beat --loglevel=info &
 
 echo "Starting Django development server..."
 #python manage.py runserver 0.0.0.0:8000

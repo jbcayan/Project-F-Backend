@@ -1,8 +1,11 @@
+from django.core.files.storage import default_storage
+from django.db import transaction
 from rest_framework import serializers
 
 from common.choices import Status
 from gallery.choices import FileTypes, RequestType, EditType
 from gallery.models import Gallery, EditRequest, EditRequestGallery
+from gallery.tasks import handle_edit_request_file
 
 
 class SimpleGallerySerializer(serializers.ModelSerializer):
@@ -191,7 +194,7 @@ class VideoAudioEditRequestSerializer(serializers.ModelSerializer):
             "uid",
             "request_status",
         ]
-
+    @transaction.atomic
     def create(self, validated_data):
         request_files = validated_data.pop('request_files')
         edit_type = validated_data.pop('edit_type')
@@ -206,10 +209,26 @@ class VideoAudioEditRequestSerializer(serializers.ModelSerializer):
             user=user,
             **validated_data
         )
+
+        # Prepare files data for background processing
+        files_data = []
         for file in request_files:
-            EditRequestGallery.objects.create(
-                edit_request=edit_request,
-                user_request_file=file,
-                file_type=FileTypes.VIDEO,
-            )
+            # Save the file to storage
+            filename = f"user-requests/{file.name}"
+            path = default_storage.save(filename, file)
+            files_data.append({
+                'path': path,
+                'file_type': FileTypes.VIDEO if edit_type == EditType.VIDEO_EDITING else FileTypes.AUDIO
+            })
+
+        # Trigger the background task to process these files
+        handle_edit_request_file.delay(edit_request.id, files_data)
+
+        # Process files in background with fallback to synchronous processing
+        #     EditRequestGallery.objects.create(
+        #             edit_request=edit_request,
+        #             user_request_file=file,
+        #             file_type=FileTypes.VIDEO,
+        #         )
+
         return edit_request
