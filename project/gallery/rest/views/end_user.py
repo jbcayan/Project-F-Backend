@@ -2,6 +2,7 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from common.permission import (
@@ -75,7 +76,7 @@ class EndUserGalleyListView(generics.ListAPIView):
     available_permission_classes = (
         IsSuperAdmin,
         IsAdmin,
-        IsEndUser
+        IsEndUser,
     )
     permission_classes = (CheckAnyPermission,)
     filter_backends = [DjangoFilterBackend]
@@ -94,7 +95,7 @@ class EndUserGalleyImageListView(generics.ListAPIView):
     available_permission_classes = (
         IsSuperAdmin,
         IsAdmin,
-        IsEndUser
+        IsEndUser,
     )
     permission_classes = (CheckAnyPermission,)
     serializer_class = SimpleGallerySerializer

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 
+from common.choices import UserKind
 from common.helpers import validate_password_complexity
 
 User = get_user_model()
@@ -29,6 +30,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             email=validated_data["email"],
         )
+        user.kind = UserKind.END_USER
 
         user.set_password(password)
         user.save()
