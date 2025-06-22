@@ -176,6 +176,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://project-xyz-beta-tq7q.vercel.app",
     # "https://sub.example.com",
 ]
 
@@ -205,13 +206,20 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "https://13.208.176.127",
     "http://13.208.176.127",
+    "https://project-xyz-beta-tq7q.vercel.app",
 ]
 
-SESSION_COOKIE_SECURE = False
+# SESSION_COOKIE_SECURE = False
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_DOMAIN = None
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+ALLOWED_HOSTS = ['13.208.176.127']
+
 
 
 # ===========================
