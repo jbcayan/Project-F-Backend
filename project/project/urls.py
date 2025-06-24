@@ -15,6 +15,7 @@ urlpatterns = [
     path('users', include('accounts.rest.urls.user')),
     path('gallery', include('gallery.rest.urls')),
     path('payment/', include('payment_service.urls')),
+    path('chat/', include('chat.urls')),
 ]
 
 if settings.DEBUG:
