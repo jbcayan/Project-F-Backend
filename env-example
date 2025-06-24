@@ -26,3 +26,9 @@ EMAIL_USE_TLS=True
 EMAIL_PORT=587
 EMAIL_HOST_USER="jbc.@gmail.com"
 EMAIL_HOST_PASSWORD=""
+
+
+
+# Stripe Secrets
+Stripe_Public_Key = Your_Stripe_Key
+Stripe_Secret_Key = Your_Stripe_Key
