@@ -53,3 +53,49 @@ class UserSubscriptionAdmin(admin.ModelAdmin):
         "stripe_subscription_id",
         "checkout_session_id",
     )
+
+
+
+
+######## Product Payment Admin ##########
+
+from django.contrib import admin
+from payment_service.models import PaymentHistory
+
+
+@admin.register(PaymentHistory)
+class PaymentHistoryAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "product_id",
+        "amount",
+        "quantity",
+        "stripe_payment_status",
+        "paid_at",
+    )
+    list_filter = (
+        "stripe_payment_status",
+        "status",
+        "paid_at",
+    )
+    search_fields = (
+        "user__email",
+        "product_id",
+        "stripe_order_id",
+        "stripe_session_id",
+    )
+    readonly_fields = (
+        "uid",
+        "user",
+        "product_id",
+        "amount",
+        "quantity",
+        "stripe_session_id",
+        "stripe_order_id",
+        "stripe_payment_status",
+        "stripe_response_data",
+        "paid_at",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-paid_at",)

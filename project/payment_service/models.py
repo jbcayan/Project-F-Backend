@@ -107,3 +107,34 @@ class UserSubscription(models.Model):
     @property
     def is_premium(self):
         return self.status == SubscriptionStatus.ACTIVE and not self.cancel_at_period_end
+
+
+
+###### Product Payment Models ##########
+
+from django.db import models
+from accounts.models import User
+from common.models import BaseModelWithUID
+from common.choices import Status
+
+
+class PaymentHistory(BaseModelWithUID):
+    """Stores payment transactions made by users."""
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payments")
+    product_id = models.CharField(max_length=100)
+    quantity = models.PositiveIntegerField(default=1)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_at = models.DateTimeField(blank=True, null=True)  # Set when payment is confirmed
+
+    # Stripe-related fields
+    stripe_session_id = models.CharField(max_length=255, unique=True)
+    stripe_order_id = models.CharField(max_length=255, blank=True, null=True)
+    stripe_payment_status = models.CharField(max_length=50, blank=True, null=True)
+    stripe_response_data = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        ordering = ("-paid_at",)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.product_id} - ${self.amount}"

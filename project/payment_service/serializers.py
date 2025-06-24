@@ -50,3 +50,42 @@ class ConfirmSubscriptionSerializer(serializers.Serializer):
     Serializer to confirm Stripe subscription after payment.
     """
     session_id = serializers.CharField()
+
+
+
+
+
+
+
+
+
+###### Product Payment Serializers ##########
+
+from rest_framework import serializers
+from payment_service.models import PaymentHistory
+
+
+class PaymentHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentHistory
+        fields = [
+            "uid",
+            "user",
+            "product_id",
+            "quantity",
+            "amount",
+            "paid_at",
+            "stripe_session_id",
+            "stripe_order_id",
+            "stripe_payment_status",
+            "stripe_response_data",
+        ]
+        read_only_fields = [
+            "uid",
+            "user",
+            "paid_at",
+            "stripe_session_id",
+            "stripe_order_id",
+            "stripe_payment_status",
+            "stripe_response_data",
+        ]
