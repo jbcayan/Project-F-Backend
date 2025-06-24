@@ -40,6 +40,11 @@ class Gallery(BaseModelWithUID):
     )
     file = models.FileField(upload_to='gallery/')
     is_public = models.BooleanField(default=False)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
 
     def save(self, *args, **kwargs):
         if not self.code:
@@ -55,6 +60,10 @@ class Gallery(BaseModelWithUID):
         ordering = ('-created_at',)
 
 
+
+# ====================================================
+# Like Cart
+# ====================================================
 class EditRequest(BaseModelWithUID):
     user = models.ForeignKey(
         "accounts.User",
@@ -126,6 +135,11 @@ class EditRequest(BaseModelWithUID):
         verbose_name_plural = "Edit Requests"
         ordering = ('-created_at',)
 
+
+
+# ====================================================
+# Like Cart Items
+# ====================================================
 class EditRequestGallery(models.Model):
     edit_request = models.ForeignKey(
         "EditRequest",

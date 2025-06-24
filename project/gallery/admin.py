@@ -3,7 +3,7 @@ from gallery.models import Gallery, EditRequest, EditRequestGallery
 
 
 class GalleryAdmin(admin.ModelAdmin):
-    list_display = ('title', 'code', 'file_type', 'is_public', 'created_by', 'created_at')
+    list_display = ('title', 'code', 'file_type', 'is_public', 'price', 'created_by', 'created_at')
     list_filter = ('file_type', 'is_public', 'created_at')
     search_fields = ('title', 'code', 'description', 'created_by__email')
     readonly_fields = ('code', 'created_by', 'updated_by', 'created_at', 'updated_at')
