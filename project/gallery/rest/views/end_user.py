@@ -27,7 +27,7 @@ from gallery.rest.serializers.end_user import (
 
 @extend_schema(
     summary="Get all edit requests for the end user",
-    # tags=["End User"]
+    tags=["End User"]
 )
 class EndUserEditRequestView(generics.ListCreateAPIView):
     available_permission_classes = (
@@ -49,7 +49,7 @@ class EndUserEditRequestView(generics.ListCreateAPIView):
 
 @extend_schema(
     summary="Get a specific edit request for the end user",
-    # tags=["End User"]
+    tags=["End User"]
 )
 class EndUserEditRequestRetrieveView(generics.RetrieveAPIView):
     available_permission_classes = (

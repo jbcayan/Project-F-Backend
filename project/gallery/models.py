@@ -183,6 +183,12 @@ class EditRequestGallery(models.Model):
         on_delete=models.SET_NULL,
         related_name='file_edit_responses'
     )
+    quantity = models.IntegerField(
+        default=1,
+        blank=True,
+        null=True,
+        help_text='Quantity of files to be edited or ordered'
+    )
 
     class Meta:
         unique_together = ('edit_request', 'gallery')

@@ -29,7 +29,7 @@ class EndUserEditRequestMediaFileSerializer(serializers.Serializer):
             'does_not_exist': 'Invalid or inactive gallery UID provided.'
         }
     )
-    individual_note = serializers.CharField(required=False, allow_blank=True)
+    # individual_note = serializers.CharField(required=False, allow_blank=True)
 
 
 class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
@@ -37,6 +37,7 @@ class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
         many=True,
         write_only=True
     )
+    quantity = serializers.IntegerField(required=True, write_only=True)  # Add write_only here
 
     class Meta:
         model = EditRequest
@@ -44,6 +45,7 @@ class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
             'uid',
             'code',
             'media_files',
+            'quantity',
             'description',
             'special_note',
             'request_status',
@@ -57,16 +59,24 @@ class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         media_files = validated_data.pop('media_files')
+        quantity = validated_data.pop('quantity')
+
+        print(media_files[0]['gallery_uid'])
+
         user = self.context['request'].user
         edit_request = EditRequest.objects.create(
             user=user,
+            request_type=RequestType.SOUVENIR_REQUEST,
             **validated_data
         )
         for media_file in media_files:
+            file_type = media_file['gallery_uid'].file_type
             EditRequestGallery.objects.create(
                 edit_request=edit_request,
                 gallery=media_file['gallery_uid'],
-                individual_note=media_file['individual_note']
+                # individual_note=media_file['individual_note'],
+                quantity=quantity,
+                file_type=file_type
             )
         return edit_request
 
