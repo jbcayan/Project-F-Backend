@@ -38,10 +38,10 @@ def unique_file_code():
         code = generate_code()
     return f"GL-{code}"
 
-def unique_request_code():
+def unique_request_code(request_type):
     from gallery.models import EditRequest
 
     code = generate_code()
     while EditRequest.objects.filter(code=code).exists():
         code = generate_code()
-    return f"ER-{code}"
+    return f"{request_type}-{code}"

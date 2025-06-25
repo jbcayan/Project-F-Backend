@@ -3,9 +3,9 @@ from django.db import transaction
 from rest_framework import serializers
 
 from common.choices import Status
-from gallery.choices import FileTypes, RequestType, EditType
+from gallery.choices import FileTypes, RequestType, EditType, RequestStatus
 from gallery.models import Gallery, EditRequest, EditRequestGallery
-from gallery.tasks import handle_edit_request_file
+from gallery.tasks import handle_edit_request_file, send_mail_task
 
 
 class SimpleGallerySerializer(serializers.ModelSerializer):
@@ -169,6 +169,7 @@ class EditRequestListSerializer(serializers.ModelSerializer):
         model = EditRequest
         fields = [
             "uid",
+            "code",
             "description",
             "special_note",
             "request_status",
@@ -190,6 +191,27 @@ class EditRequestUpdateStatusSerializer(serializers.ModelSerializer):
         new_status = validated_data['request_status']
         instance.request_status = new_status
         instance.save()
+
+        if old_status != RequestStatus.COMPLETED and new_status == RequestStatus.COMPLETED:
+            subject = f"Your {instance.get_request_type_display()} request has been completed!"
+
+            text_content = (
+                f"Hello {instance.user.email},\n\n"
+                f"Your {instance.get_request_type_display()} request ({instance.code}) has been completed!\n\n"
+                f"Please check your account for the completed request.\n\n"
+                f"Best regards,\n"
+                f"Alibi Team"
+            )
+
+            html_content = (
+                f"<p>Hello {instance.user.email},</p>"
+                f"<p>Your <strong>{instance.get_request_type_display()}</strong> request "
+                f"(<strong>{instance.code}</strong>) has been completed!</p>"
+                f"<p>Please check your account for the completed request.</p>"
+                f"<p>Best regards,<br>Alibi Team</p>"
+            )
+
+            send_mail_task.delay(subject, text_content, html_content, instance.user.email)
 
         return instance
 

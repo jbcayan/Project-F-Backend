@@ -25,11 +25,11 @@ urlpatterns = [
         AdminPhotoEditRequestRetrieveView.as_view(),
         name="admin-photo-edit-request-retrieve"
     ),
-    # path(
-    #     "/photo-edit-requests/<str:uid>/update-status",
-    #     AdminPhotoEditRequestUpdateStatusView.as_view(),
-    #     name="admin-photo-edit-request-update-status"
-    # ),
+    path(
+        "/photo-edit-requests/<str:uid>/update-status",
+        AdminPhotoEditRequestUpdateStatusView.as_view(),
+        name="admin-photo-edit-request-update-status"
+    ),
     path(
         "/video-audio-edit-requests",
         AdminVideoAudioEditRequestView.as_view(),

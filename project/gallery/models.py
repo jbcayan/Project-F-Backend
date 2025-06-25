@@ -13,7 +13,7 @@ User = get_user_model()
 class Gallery(BaseModelWithUID):
     title = models.CharField(max_length=255)
     code = models.CharField(
-        max_length=15,
+        max_length=50,
         unique=True,
         editable=False,
         db_index=True
@@ -71,7 +71,7 @@ class EditRequest(BaseModelWithUID):
         related_name='submitted_edit_requests'
     )
     code = models.CharField(
-        max_length=15,
+        max_length=50,
         unique=True,
         editable=False,
         db_index=True
@@ -124,7 +124,7 @@ class EditRequest(BaseModelWithUID):
 
     def save(self, *args, **kwargs):
         if not self.code:
-            self.code = unique_request_code()
+            self.code = unique_request_code(self.request_type)
         super(EditRequest, self).save(*args, **kwargs)
 
     def __str__(self):
