@@ -213,3 +213,25 @@ class EndUserVideoAudioEditRequestView(generics.ListCreateAPIView):
                 'message': 'Edit request submitted successfully.'
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EndUserVideoAudioEditRequestRetrieveView(generics.RetrieveAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser,
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestListSerializer
+
+    def get_object(self):
+        request_uid = self.kwargs['uid']
+        try:
+            return EditRequest.objects.get(
+                uid=request_uid,
+                user=self.request.user
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)

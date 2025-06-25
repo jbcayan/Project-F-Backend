@@ -61,8 +61,6 @@ class EndUserEditRequestCreateSerializer(serializers.ModelSerializer):
         media_files = validated_data.pop('media_files')
         quantity = validated_data.pop('quantity')
 
-        print(media_files[0]['gallery_uid'])
-
         user = self.context['request'].user
         edit_request = EditRequest.objects.create(
             user=user,
@@ -261,6 +259,7 @@ class VideoAudioEditRequestSerializer(serializers.ModelSerializer):
         model = EditRequest
         fields = [
             "uid",
+            "code",
             "title",
             "description",
             "special_note",

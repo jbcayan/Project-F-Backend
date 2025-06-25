@@ -4,9 +4,11 @@ from gallery.rest.views.admin import (
     GalleryListCreateView,
     AdminPhotoEditRequestView,
     AdminVideoAudioEditRequestView,
-AdminSouvenirRequestView,
-AdminPhotoEditRequestRetrieveView,
-AdminPhotoEditRequestUpdateStatusView
+    AdminSouvenirRequestView,
+    AdminPhotoEditRequestRetrieveView,
+    AdminPhotoEditRequestUpdateStatusView,
+    AdminVideoAudioEditRequestRetrieveView,
+    AdminVideoAudioEditRequestUpdateStatusView
 )
 
 urlpatterns = [
@@ -34,6 +36,16 @@ urlpatterns = [
         "/video-audio-edit-requests",
         AdminVideoAudioEditRequestView.as_view(),
         name="admin-video-audio-edit-request"
+    ),
+    path(
+        "/video-audio-edit-requests/<str:uid>",
+        AdminVideoAudioEditRequestRetrieveView.as_view(),
+        name="admin-video-audio-edit-request-retrieve"
+    ),
+    path(
+        "/video-audio-edit-requests/<str:uid>/update-status",
+        AdminVideoAudioEditRequestUpdateStatusView.as_view(),
+        name="admin-video-audio-edit-request-update-status"
     ),
     path(
         "/souvenir-requests",

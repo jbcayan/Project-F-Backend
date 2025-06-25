@@ -105,7 +105,7 @@ class AdminPhotoEditRequestUpdateStatusView(generics.UpdateAPIView):
             )
             return obj
         except EditRequest.DoesNotExist:
-            raise NotFound(detail="Photo edit request not found with this ID")
+            raise NotFound(detail="Photo edit request not found")
 
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
@@ -136,6 +136,65 @@ class AdminVideoAudioEditRequestView(generics.ListAPIView):
             return Response({
                 'message': 'No edit requests found.'
             }, status=status.HTTP_404_NOT_FOUND)
+
+@extend_schema(
+    summary="Video and Audio edit request retrieve for Admin Users only",
+    tags=["Admin"],
+)
+class AdminVideoAudioEditRequestRetrieveView(generics.RetrieveAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestListSerializer
+
+    def get_object(self):
+        request_uid = self.kwargs['uid']
+        try:
+            return EditRequest.objects.get(
+                Q(uid=request_uid) & (
+                        Q(request_type=RequestType.VIDEO_REQUEST) |
+                        Q(request_type=RequestType.AUDIO_REQUEST)
+                )
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+@extend_schema(
+    summary="Video and Audio edit request update status for Admin Users only",
+    tags=["Admin"],
+)
+class AdminVideoAudioEditRequestUpdateStatusView(generics.UpdateAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestUpdateStatusSerializer
+    http_method_names = ['patch']
+
+    def get_object(self):
+        request_uid = self.kwargs.get('uid')
+        try:
+            obj = EditRequest.objects.get(
+                Q(uid=request_uid) & (
+                        Q(request_type=RequestType.VIDEO_REQUEST) |
+                        Q(request_type=RequestType.AUDIO_REQUEST)
+                )
+            )
+            return obj
+        except EditRequest.DoesNotExist:
+            raise NotFound(detail="Video and Audio edit request not found")
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+
+        response.data['message'] = "Video and Audio edit request status updated successfully"
+        return response
 
 
 @extend_schema(

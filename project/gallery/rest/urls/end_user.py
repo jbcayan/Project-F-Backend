@@ -8,6 +8,7 @@ from gallery.rest.views.end_user import (
     EndUserPhotoEditRequestView,
     EndUserVideoAudioEditRequestView,
     EndUserPhotoEditRequestRetrieveView,
+    EndUserVideoAudioEditRequestRetrieveView
 )
 
 urlpatterns = [
@@ -45,5 +46,10 @@ urlpatterns = [
         "/video-audio-edit-requests",
         EndUserVideoAudioEditRequestView.as_view(),
         name="end-user-video-audio-edit-request"
+    ),
+    path(
+        "/video-audio-edit-requests/<str:uid>",
+        EndUserVideoAudioEditRequestRetrieveView.as_view(),
+        name="end-user-video-audio-edit-request-retrieve"
     ),
 ]
