@@ -177,7 +177,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://project-xyz-beta-tq7q.vercel.app",
-    # "https://sub.example.com",
+    "http://localhost:8888",
+    "http://15.206.185.80",
+    "https://15.206.185.80",
 ]
 
 CORS_ALLOW_METHODS = (
@@ -209,6 +211,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://project-xyz-beta-tq7q.vercel.app",
     "http://15.206.185.80",
     "https://15.206.185.80",
+    "http://localhost:8888",
 ]
 
 SESSION_COOKIE_SECURE = False
