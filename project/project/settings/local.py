@@ -82,11 +82,11 @@ else:  # Assuming PostgreSQL as the other option
         },
     }
 
+DB_HOST = config("DB_HOST", default="localhost")
 
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        # "LOCATION": "redis://localhost:6379",
-        "LOCATION": "redis://alibi_redis:6379",
+        "LOCATION": "redis://localhost:6379" if DB_HOST == "localhost" else "redis://alibi_redis:6379",
     }
 }

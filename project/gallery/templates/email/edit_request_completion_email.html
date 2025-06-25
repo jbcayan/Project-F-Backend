@@ -1,0 +1,12 @@
+<!-- templates/emails/photo_request_completed.html -->
+<!DOCTYPE html>
+<html>
+<body>
+    <p>Hello <strong>Dear</strong>,</p>
+    <p>Your {{edit_request}} request (<strong>#{{ request_code }}</strong>) has been completed!</p>
+    <p><a href="{{ site_url }}/requests/{{ request_uid }}">View your completed request</a></p>
+    <br>
+    <p>— Best Regards</p>
+    <p>Alibi Team</p>
+</body>
+</html>

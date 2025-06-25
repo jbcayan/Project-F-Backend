@@ -23,3 +23,8 @@ def handle_edit_request_file(edit_request_id, files_data):
 @shared_task()
 def print_something():
     print("Hello, world!")
+
+
+def send_request_completion_email(user, edit_request):
+    # Logic to send email
+    Subject = f"Your {edit_request.request_type} request has been completed!"

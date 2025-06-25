@@ -207,6 +207,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://13.208.176.127",
     "http://13.208.176.127",
     "https://project-xyz-beta-tq7q.vercel.app",
+    "http://15.206.185.80",
+    "https://15.206.185.80",
 ]
 
 SESSION_COOKIE_SECURE = False

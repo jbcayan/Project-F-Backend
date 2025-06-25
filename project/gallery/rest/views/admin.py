@@ -2,6 +2,7 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
 from common.permission import IsAdmin, IsSuperAdmin, CheckAnyPermission
@@ -9,7 +10,8 @@ from gallery.choices import RequestType
 from gallery.filters import GalleryFilter
 from gallery.models import Gallery, EditRequest
 from gallery.rest.serializers.admin import GalleryUploadSerializer
-from gallery.rest.serializers.end_user import EditRequestListSerializer
+from gallery.rest.serializers.end_user import EditRequestListSerializer, SouvenirEditRequestListSerializer, \
+    EditRequestUpdateStatusSerializer
 
 
 @extend_schema(
@@ -56,6 +58,63 @@ class AdminPhotoEditRequestView(generics.ListAPIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 @extend_schema(
+    summary="Photo edit request retrieve for Admin Users only",
+    tags=["Admin"],
+)
+class AdminPhotoEditRequestRetrieveView(generics.RetrieveAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestListSerializer
+
+    def get_object(self):
+        request_uid = self.kwargs['uid']
+        try:
+            return EditRequest.objects.get(
+                uid=request_uid,
+                request_type=RequestType.PHOTO_REQUEST
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+@extend_schema(
+    summary="Photo edit request update status for Admin Users only",
+    tags=["Admin"],
+)
+class AdminPhotoEditRequestUpdateStatusView(generics.UpdateAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestUpdateStatusSerializer
+    http_method_names = ['patch']
+
+    def get_object(self):
+        uid = self.kwargs.get('uid')
+        try:
+            obj = EditRequest.objects.get(
+                uid=uid,
+                request_type=RequestType.PHOTO_REQUEST
+            )
+            return obj
+        except EditRequest.DoesNotExist:
+            raise NotFound(detail="Photo edit request not found with this ID")
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+
+        response.data['message'] = "Photo edit request status updated successfully"
+        return response
+
+
+@extend_schema(
     summary="Video and Audio edit request list for Admin Users only",
     tags=["Admin"],
 )
@@ -72,6 +131,29 @@ class AdminVideoAudioEditRequestView(generics.ListAPIView):
             return EditRequest.objects.filter(
                 Q(request_type=RequestType.VIDEO_REQUEST) |
                 Q(request_type=RequestType.AUDIO_REQUEST)
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+@extend_schema(
+    summary="Souvenir edit request list for Admin Users only",
+    tags=["Admin"],
+)
+class AdminSouvenirRequestView(generics.ListAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = SouvenirEditRequestListSerializer
+
+    def get_queryset(self, *args, **kwargs):
+        try:
+            return EditRequest.objects.filter(
+                request_type=RequestType.SOUVENIR_REQUEST
             )
         except EditRequest.DoesNotExist:
             return Response({

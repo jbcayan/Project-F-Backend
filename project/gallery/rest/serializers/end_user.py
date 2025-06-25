@@ -174,7 +174,53 @@ class EditRequestListSerializer(serializers.ModelSerializer):
             "request_status",
             'request_type',
             "desire_delivery_date",
-            "files"
+            "files",
+            "created_at",
+        ]
+
+class EditRequestUpdateStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EditRequest
+        fields = [
+            "request_status",
+        ]
+
+    def update(self, instance, validated_data):
+        old_status = instance.request_status
+        new_status = validated_data['request_status']
+        instance.request_status = new_status
+        instance.save()
+
+        return instance
+
+class SouvenirEditRequestGallerySerializer(serializers.ModelSerializer):
+    file = serializers.FileField(source="gallery.file", read_only=True)
+    file_type = serializers.CharField(source="gallery.file_type", read_only=True)
+
+
+    class Meta:
+        model = EditRequestGallery
+        fields = [
+            "file",
+            "file_type",
+            "file_status",
+            "quantity",
+        ]
+
+class SouvenirEditRequestListSerializer(serializers.ModelSerializer):
+    request_files = SouvenirEditRequestGallerySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = EditRequest
+        fields = [
+            "uid",
+            "description",
+            "special_note",
+            "request_status",
+            'request_type',
+            "desire_delivery_date",
+            "created_at",
+            "request_files",
         ]
 
 

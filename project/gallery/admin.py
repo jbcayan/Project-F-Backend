@@ -24,9 +24,9 @@ class EditRequestGalleryInline(admin.TabularInline):
 
 
 class EditRequestAdmin(admin.ModelAdmin):
-    list_display = ('code', 'user', 'request_status', 'desire_delivery_date', 'created_at')
+    list_display = ('uid','code', 'user', 'request_status', 'desire_delivery_date', 'created_at')
     list_filter = ('request_status', 'desire_delivery_date', 'created_at')
-    search_fields = ('code', 'description', 'user__email')
+    search_fields = ('uid', 'code', 'description', 'user__email')
     readonly_fields = ('code', 'user', 'created_at', 'updated_at')
     inlines = [EditRequestGalleryInline]
     ordering = ('-created_at',)
