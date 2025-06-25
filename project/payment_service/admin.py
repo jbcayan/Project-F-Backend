@@ -5,6 +5,7 @@ from .models import SubscriptionPlan, UserSubscription
 @admin.register(SubscriptionPlan)
 class SubscriptionPlanAdmin(admin.ModelAdmin):
     list_display = (
+        "uid",
         "name",
         "amount_jpy",
         "billing_interval",
@@ -12,7 +13,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         "stripe_product_id",
         "stripe_price_id",
     )
-    search_fields = ("name",)
+    search_fields = ("uid", "name",)
     list_filter = ("billing_interval", "is_active")
     readonly_fields = ("stripe_product_id", "stripe_price_id")
     actions = ["create_on_stripe"]
