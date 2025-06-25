@@ -146,6 +146,33 @@ class EndUserPhotoEditRequestView(generics.ListCreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema(
+    summary="Get a specific photo edit request for the end user",
+    tags=["End User"]
+)
+class EndUserPhotoEditRequestRetrieveView(generics.RetrieveAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser,
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = EditRequestListSerializer
+
+    def get_object(self):
+        request_uid = self.kwargs['uid']
+        try:
+            return EditRequest.objects.get(
+                uid=request_uid,
+                user=self.request.user,
+                request_type=RequestType.PHOTO_REQUEST
+            )
+        except EditRequest.DoesNotExist:
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+@extend_schema(
     summary="User can submit a video or audio request and get a list of all video or audio requests submitted by the user",
     tags=["End User"]
 )

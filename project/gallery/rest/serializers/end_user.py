@@ -108,6 +108,7 @@ class EndUserEditRequestRetrieveSerializer(serializers.ModelSerializer):
         model = EditRequest
         fields = [
             "uid",
+            "code",
             "description",
             "special_note",
             "request_status",
