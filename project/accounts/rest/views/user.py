@@ -77,11 +77,11 @@ class UserLoginView(generics.CreateAPIView):
                 {"detail": "User is not active"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if not user.is_verified:
-            return Response(
-                {"detail": "User is not verified"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        # if not user.is_verified:
+        #     return Response(
+        #         {"detail": "User is not verified"},
+        #         status=status.HTTP_403_FORBIDDEN,
+        #     )
 
         refresh = RefreshToken.for_user(user)
 
