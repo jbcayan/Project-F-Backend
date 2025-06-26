@@ -7,7 +7,11 @@ class IsAdmin(BasePermission):
     Custom permission to only allow access to admin users.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.kind == UserKind.ADMIN
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.kind == UserKind.ADMIN
+        )
 
 
 class IsSuperAdmin(BasePermission):
@@ -15,7 +19,11 @@ class IsSuperAdmin(BasePermission):
     Custom permission to only allow access to super admin users.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.kind == UserKind.SUPER_ADMIN
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.kind == UserKind.SUPER_ADMIN
+        )
 
 
 class IsEndUser(BasePermission):
@@ -23,7 +31,11 @@ class IsEndUser(BasePermission):
     Custom permission to only allow access to end users.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.kind == UserKind.END_USER
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.kind == UserKind.END_USER
+        )
 
 
 class CheckAnyPermission(BasePermission):

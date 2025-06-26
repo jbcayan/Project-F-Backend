@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.rest.serializers.user import (
     UserRegistrationSerializer,
     UserLoginSerializer,
-    UserSerializer
+    UserSerializer, OTPVerificationSerializer
 )
 
 from common.permission import (
@@ -43,6 +43,22 @@ class UserRegistrationView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
 
+@extend_schema(
+    summary="End Point for user Login by Email and Password",
+    request=OTPVerificationSerializer,
+    description="End Point for user Login, No Authentication Required",
+)
+class VerifyOTPView(generics.CreateAPIView):
+    def post(self, request, *args, **kwargs):
+        serializer = OTPVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(
+                {"detail": f"OTP verified successfully."},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @extend_schema(
     summary="End Point for user Login by Email and Password",
@@ -56,6 +72,16 @@ class UserLoginView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data.get("user")
+        if not user.is_active:
+            return Response(
+                {"detail": "User is not active"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not user.is_verified:
+            return Response(
+                {"detail": "User is not verified"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         refresh = RefreshToken.for_user(user)
 

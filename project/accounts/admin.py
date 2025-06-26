@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User, UserProfile
+from .models import User, UserProfile, OTP
+
 
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
@@ -39,5 +40,20 @@ class CustomUserAdmin(BaseUserAdmin):
             return []
         return super().get_inline_instances(request, obj)
 
+
+class OTPAdmin(admin.ModelAdmin):
+    list_display = ('otp', 'user_email', 'is_used', 'created_at')
+    list_filter = ('is_used', 'created_at')
+    search_fields = ('otp', 'user__email')
+    ordering = ('-created_at',)
+    readonly_fields = ('uid', 'created_at', 'updated_at')
+
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'User Email'
+
+
+
 # ✅ Register the user model with the custom admin class
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(OTP, OTPAdmin)

@@ -1,5 +1,8 @@
 from __future__ import absolute_import, unicode_literals
+
 import os
+from datetime import timedelta
+
 from celery import Celery
 from celery.schedules import crontab
 from decouple import config
@@ -25,10 +28,18 @@ app.conf.update(
     timezone=TIME_ZONE,  # Set the timezone for Celery tasks
 )
 
-# Define periodic tasks in Celery Beat schedule
+
 app.conf.beat_schedule = {
-    "print-something-every-30-seconds": {
-        "task": "gallery.tasks.print_something",  # Adjust the task path here
-        "schedule": crontab(minute="*"),  # Run every minute
+#     "print-something-every-30-seconds": {
+#         "task": "gallery.tasks.print_something", # Adjust the task path here
+#         "schedule": crontab(minute="*"),  # Run every minute
+#     },
+    'delete-used-or-expired-otps-every-12-hours': {
+        'task': 'accounts.tasks.delete_used_or_expired_otps',
+        'schedule': crontab(hour=0, minute=0),
+    },
+    'delete-unverified-users-every-12-hours': {
+        'task': 'accounts.tasks.delete_unverified_users',
+        'schedule': timedelta(hours=12),
     },
 }

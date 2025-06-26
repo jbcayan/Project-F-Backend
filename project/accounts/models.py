@@ -115,4 +115,29 @@ class UserProfile(models.Model):
         return self.full_name if self.full_name else self.user.email
 
 
+class OTP(BaseModelWithUID):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="otp",
+    )
+    otp = models.CharField(
+        max_length=6,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    is_used = models.BooleanField(
+        default=False,
+    )
+
+    class Meta:
+        verbose_name = "OTP"
+        verbose_name_plural = "OTPs"
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"{self.otp} - {self.user} - {self.is_used}"
+
+
 post_save.connect(post_save_create_profile_receiver, sender=User)
