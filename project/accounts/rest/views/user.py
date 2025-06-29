@@ -2,7 +2,6 @@
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, generics
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -11,7 +10,7 @@ from accounts.rest.serializers.user import (
     UserLoginSerializer,
     UserSerializer, OTPVerificationSerializer
 )
-
+from accounts.utils import is_user_subscribed
 from common.permission import (
     IsAdmin,
     IsSuperAdmin,
@@ -77,11 +76,17 @@ class UserLoginView(generics.CreateAPIView):
                 {"detail": "User is not active"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        # if not user.is_verified:
-        #     return Response(
-        #         {"detail": "User is not verified"},
-        #         status=status.HTTP_403_FORBIDDEN,
-        #     )
+        if not user.is_verified:
+            return Response(
+                {"detail": "User is not verified"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not is_user_subscribed(user):
+            return Response(
+                {"detail": "User is not subscribed"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         refresh = RefreshToken.for_user(user)
 

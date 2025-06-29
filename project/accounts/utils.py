@@ -1,7 +1,10 @@
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta, datetime
+
+from django.utils.timezone import now
 
 from accounts.models import OTP
+from payment_service.models import UserSubscription, SubscriptionStatus
 
 
 def generate_unique_otp(length=6) -> str:
@@ -25,6 +28,22 @@ def check_otp_validity(user_otp):
         return False
 
     return True
+
+def is_user_subscribed(user):
+    try:
+        subscription = user.subscription
+    except UserSubscription.DoesNotExist:
+        return False
+
+    if (
+        subscription.status == SubscriptionStatus.ACTIVE and
+        # not subscription.cancel_at_period_end and
+        subscription.current_period_end and
+        subscription.current_period_end > now()
+    ):
+        return True
+
+    return False
 
 
 

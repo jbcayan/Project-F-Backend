@@ -123,6 +123,10 @@ class PaymentHistory(BaseModelWithUID):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payments")
     product_id = models.CharField(max_length=100)
+    # order_id = models.CharField(
+    #     max_length=100,
+    #     help_text="order code from Edit Request"
+    # )
     quantity = models.PositiveIntegerField(default=1)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_at = models.DateTimeField(blank=True, null=True)  # Set when payment is confirmed
