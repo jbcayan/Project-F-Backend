@@ -82,18 +82,13 @@ class UserLoginView(generics.CreateAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if not is_user_subscribed(user):
-            return Response(
-                {"detail": "User is not subscribed"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         refresh = RefreshToken.for_user(user)
 
         response_data = {
             "user": {
                 "email": user.email,
-                "kind": user.kind
+                "kind": user.kind,
+                "is_subscribed": is_user_subscribed(user),
             },
             "refresh": str(refresh),
             "access": str(refresh.access_token),
