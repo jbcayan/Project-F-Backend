@@ -48,7 +48,7 @@ class SubscriptionPlan(models.Model):
         interval_data = INTERVAL_MAPPING[self.billing_interval]
 
         price = stripe.Price.create(
-            unit_amount=self.amount_jpy * 100,
+            unit_amount=self.amount_jpy,
             currency="jpy",
             recurring={
                 "interval": interval_data["interval"],

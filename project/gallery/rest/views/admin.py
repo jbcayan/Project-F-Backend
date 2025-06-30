@@ -1,6 +1,17 @@
+import csv
+import io
+import os
+import requests
+import zipfile
+from datetime import datetime
+from urllib.request import urlopen
+
 from django.db.models import Q
+from django.http import FileResponse
+from django.utils.timezone import make_aware
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
@@ -9,7 +20,7 @@ from common.permission import IsAdmin, IsSuperAdmin, CheckAnyPermission
 from gallery.choices import RequestType
 from gallery.filters import GalleryFilter
 from gallery.models import Gallery, EditRequest
-from gallery.rest.serializers.admin import GalleryUploadSerializer
+from gallery.rest.serializers.admin import GalleryUploadSerializer, DownloadRequestSerializer
 from gallery.rest.serializers.end_user import EditRequestListSerializer, SouvenirEditRequestListSerializer, \
     EditRequestUpdateStatusSerializer
 
@@ -219,3 +230,95 @@ class AdminSouvenirRequestView(generics.ListAPIView):
                 'message': 'No edit requests found.'
             }, status=status.HTTP_404_NOT_FOUND)
 
+
+@extend_schema(
+    summary="Download edit requests for Admin Users only",
+    tags=["Admin"],
+    parameters=[
+        OpenApiParameter(
+            name='start_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='Start date for filtering requests (YYYY-MM-DD)'
+        ),
+        OpenApiParameter(
+            name='end_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='End date for filtering requests (YYYY-MM-DD)'
+        ),
+        OpenApiParameter(
+            name='request_type',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description='Filter by specific request type',
+            enum=[choice[0] for choice in RequestType.choices]  # Show all available choices
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(description='Zip file containing all edit requests'),
+        400: OpenApiResponse(description='Invalid input data'),
+        403: OpenApiResponse(description='Permission denied')
+    }
+)
+class EditRequestDownloadView(generics.GenericAPIView):
+    available_permission_classes = (IsAdmin, IsSuperAdmin)
+    permission_classes = (CheckAnyPermission,)
+
+    def get(self, request):
+        serializer = DownloadRequestSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date = make_aware(datetime.combine(serializer.validated_data['start_date'], datetime.min.time()))
+        end_date = make_aware(datetime.combine(serializer.validated_data['end_date'], datetime.max.time()))
+        request_type = serializer.validated_data.get('request_type')
+
+        requests_items = EditRequest.objects.filter(
+            created_at__range=(start_date, end_date),
+            request_type=request_type if request_type else None
+        ).prefetch_related('request_files__gallery')
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+            for req in requests_items:
+                folder_name = f"{req.code}/"
+                files = req.request_files.all()
+
+                # CSV data
+                csv_buffer = io.StringIO()
+                csv_writer = csv.writer(csv_buffer)
+                csv_writer.writerow([
+                    'title', 'special_note', 'description', 'request_status',
+                    'desire_delivery_date', 'request_type', 'shipping_address',
+                    'additional_notes', 'file_urls'
+                ])
+
+                file_urls = ';'.join([f.user_request_file.url for f in files if f.user_request_file])
+                csv_writer.writerow([
+                    req.title, req.special_note, req.description, req.request_status,
+                    req.desire_delivery_date, req.request_type, req.shipping_address,
+                    req.additional_notes, file_urls
+                ])
+                zip_file.writestr(folder_name + 'data.csv', csv_buffer.getvalue())
+
+                # Media files
+                for f in files:
+                    if f.user_request_file and f.user_request_file.url:
+                        try:
+                            response = requests.get(f.user_request_file.url, timeout=10)
+                            response.raise_for_status()  # Raise exception for bad status
+                            filename = os.path.basename(f.user_request_file.name)
+                            zip_file.writestr(folder_name + filename, response.content)
+                        except Exception as e:
+                            print(f"Error downloading {f.user_request_file.url}: {str(e)}")
+                            continue
+
+        zip_buffer.seek(0)
+        filename = f"edit_requests_{serializer.validated_data['start_date']}_to_{serializer.validated_data['end_date']}.zip"
+        response = FileResponse(zip_buffer, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response

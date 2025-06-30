@@ -8,7 +8,8 @@ from gallery.rest.views.admin import (
     AdminPhotoEditRequestRetrieveView,
     AdminPhotoEditRequestUpdateStatusView,
     AdminVideoAudioEditRequestRetrieveView,
-    AdminVideoAudioEditRequestUpdateStatusView
+    AdminVideoAudioEditRequestUpdateStatusView,
+    EditRequestDownloadView,
 )
 
 urlpatterns = [
@@ -51,5 +52,10 @@ urlpatterns = [
         "/souvenir-requests",
         AdminSouvenirRequestView.as_view(),
         name="admin-souvenir-request"
+    ),
+    path(
+        "/download",
+        EditRequestDownloadView.as_view(),
+        name="edit-request-download"
     ),
 ]
