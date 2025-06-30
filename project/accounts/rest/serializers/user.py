@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model, authenticate
 from django.db import transaction
 from rest_framework import serializers
 
-from accounts.utils import generate_unique_otp
+from accounts.utils import generate_unique_otp, is_user_subscribed
 from common.choices import UserKind
 from common.helpers import validate_password_complexity
 
@@ -130,3 +130,19 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'kind']
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    is_subscribed = serializers.SerializerMethodField()
+    class Meta:
+        model = User
+        fields = [
+            "email",
+            "is_active",
+            "kind",
+            "is_verified",
+            "is_subscribed",
+        ]
+
+    def get_is_subscribed(self, obj):
+        return is_user_subscribed(obj)

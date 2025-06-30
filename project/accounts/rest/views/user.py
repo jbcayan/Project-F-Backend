@@ -8,7 +8,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.rest.serializers.user import (
     UserRegistrationSerializer,
     UserLoginSerializer,
-    UserSerializer, OTPVerificationSerializer
+    UserSerializer,
+    OTPVerificationSerializer,
+    UserListSerializer
 )
 from accounts.utils import is_user_subscribed
 from common.permission import (
@@ -118,8 +120,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
 @extend_schema(
     summary="End Point for user List",
-    request=UserSerializer,
-    description="End Point for user List, Authentication Required",
+    tags=["Admin"],
 )
 class UserListView(generics.ListAPIView):
     available_permission_classes = (
@@ -128,8 +129,5 @@ class UserListView(generics.ListAPIView):
     )
     permission_classes = (CheckAnyPermission,)
 
-    serializer_class = UserSerializer
+    serializer_class = UserListSerializer
     queryset = User.objects.all()
-
-
-
