@@ -83,3 +83,9 @@ Make sure you have **Docker** and **Docker Compose** installed.
 
 # Access shell
     docker-compose exec web python manage.py shell
+```
+
+
+```bash
+docker exec -it f_backend bash
+```

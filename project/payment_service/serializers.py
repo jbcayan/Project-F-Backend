@@ -71,7 +71,7 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
         fields = [
             "uid",
             "user",
-            "product_id",
+            "order_id",
             "quantity",
             "amount",
             "paid_at",
