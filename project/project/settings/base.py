@@ -182,6 +182,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://15.206.185.80",
     "http://18.206.250.91",   # AWS FE
     "https://18.206.250.91",   # AWS FE
+    "http://43.206.143.116",
+    "https://43.206.143.116",
+    "http://app.examplesite.jp",
+    "https://app.examplesite.jp",
 ]
 
 CORS_ALLOW_METHODS = (
@@ -216,6 +220,10 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8888",
     "http://18.206.250.91",   # AWS FE
     "https://18.206.250.91",   # AWS FE
+    "http://43.206.143.116",
+    "https://43.206.143.116",
+    "http://app.examplesite.jp",
+    "https://app.examplesite.jp",
 ]
 
 SESSION_COOKIE_SECURE = False
