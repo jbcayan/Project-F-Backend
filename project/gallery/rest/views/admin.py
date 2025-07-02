@@ -282,10 +282,15 @@ class EditRequestDownloadView(generics.GenericAPIView):
             request_type=request_type if request_type else None
         ).prefetch_related('request_files__gallery')
 
+        if not requests_items.exists():
+            return Response({
+                'message': 'No edit requests found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
             for req in requests_items:
-                folder_name = f"{req.code}/"
+                folder_name = f"{req.uid}/"
                 files = req.request_files.all()
 
                 # CSV data

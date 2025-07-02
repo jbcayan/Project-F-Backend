@@ -17,6 +17,7 @@ class GalleryUploadSerializer(serializers.ModelSerializer):
             "status",
             "file_type",
             "file",
+            "price",
         ]
         read_only_fields = ["uid", "status"]
 

@@ -68,7 +68,7 @@ from payment_service.models import PaymentHistory
 class PaymentHistoryAdmin(admin.ModelAdmin):
     list_display = (
         "user",
-        "product_id",
+        "order_id",
         "amount",
         "quantity",
         "stripe_payment_status",
@@ -81,14 +81,14 @@ class PaymentHistoryAdmin(admin.ModelAdmin):
     )
     search_fields = (
         "user__email",
-        "product_id",
+        "order_id",
         "stripe_order_id",
         "stripe_session_id",
     )
     readonly_fields = (
         "uid",
         "user",
-        "product_id",
+        "order_id",
         "amount",
         "quantity",
         "stripe_session_id",

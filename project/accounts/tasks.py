@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from celery import shared_task
+from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import OTP, User  # Adjust import paths as needed
@@ -10,11 +11,11 @@ from accounts.models import OTP, User  # Adjust import paths as needed
 def delete_used_or_expired_otps():
     """Deletes OTPs that are either used or older than 24 hours (expired)."""
     threshold = timezone.now() - timedelta(hours=24)
+
     deleted_count, _ = OTP.objects.filter(
-        is_used=True
-    ).union(
-        OTP.objects.filter(created_at__lt=threshold)
+        Q(is_used=True) | Q(created_at__lt=threshold)
     ).delete()
+
     return f"Deleted {deleted_count} used or expired OTPs."
 
 
