@@ -256,7 +256,7 @@ stripe = init_stripe()
 
 # --------- Serializer for POST input ---------
 class CreateStripeCheckoutInputSerializer(serializers.Serializer):
-    product_id = serializers.CharField()
+    order_id = serializers.CharField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=0)  # JPY = no decimal
     quantity = serializers.IntegerField(required=False, default=1)
     success_url = serializers.URLField()
@@ -282,13 +282,13 @@ class CreateStripeCheckoutSessionAPIView(APIView):
 
     def post(self, request):
         user = request.user
-        product_id = request.data.get("product_id")
+        order_id = request.data.get("order_id")
         amount = request.data.get("amount")
         quantity = request.data.get("quantity", 1)
         success_url = request.data.get("success_url")
         cancel_url = request.data.get("cancel_url")
 
-        if not all([product_id, amount, success_url, cancel_url]):
+        if not all([order_id, amount, success_url, cancel_url]):
             return Response(
                 {"detail": "Product ID, amount, success_url, and cancel_url are required."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -304,7 +304,7 @@ class CreateStripeCheckoutSessionAPIView(APIView):
                     {
                         "price_data": {
                             "currency": "jpy",
-                            "product_data": {"name": f"Product {product_id}"},
+                            "product_data": {"name": f"Order {order_id}"},
                             "unit_amount": amount_jpy,
                         },
                         "quantity": quantity,
@@ -315,7 +315,7 @@ class CreateStripeCheckoutSessionAPIView(APIView):
                 cancel_url=cancel_url,
                 metadata={
                     "user_id": str(user.uid),
-                    "product_id": product_id,
+                    "order_id": order_id,
                     "quantity": quantity,
                     "internal_id": internal_uid,
                 },
@@ -325,7 +325,7 @@ class CreateStripeCheckoutSessionAPIView(APIView):
             # Save initial payment record
             PaymentHistory.objects.create(
                 user=user,
-                product_id=product_id,
+                order_id=order_id,
                 quantity=quantity,
                 amount=amount,
                 stripe_session_id=session.id,
@@ -408,7 +408,7 @@ class VerifyStripeSessionAPIView(APIView):
     summary="List Payment History",
     description="Returns payment history for the authenticated user. Admins see all. Supports filters and sorting.",
     parameters=[
-        OpenApiParameter(name="product_id", required=False, type=str),
+        OpenApiParameter(name="order_id", required=False, type=str),
         OpenApiParameter(name="stripe_payment_status", required=False, type=str),
         OpenApiParameter(name="status", required=False, type=str),
         OpenApiParameter(name="ordering", required=False, type=str),
@@ -421,7 +421,7 @@ class PaymentHistoryListAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['product_id', 'stripe_payment_status', 'status']
+    filterset_fields = ['order_id', 'stripe_payment_status', 'status']
     ordering_fields = ['paid_at', 'amount']
     ordering = ['-paid_at']
 
