@@ -30,6 +30,8 @@ class SubscriptionPlanListView(ListAPIView):
     permission_classes = []
 
 
+from stripe.error import InvalidRequestError
+
 class CreateCheckoutSessionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -46,12 +48,19 @@ class CreateCheckoutSessionView(APIView):
         subscription, _ = UserSubscription.objects.get_or_create(user=user)
 
         # Create or retrieve Stripe customer
+        customer = None
         if not subscription.stripe_customer_id:
             customer = stripe_api.Customer.create(email=user.email)
             subscription.stripe_customer_id = customer.id
             subscription.save()
         else:
-            customer = stripe_api.Customer.retrieve(subscription.stripe_customer_id)
+            try:
+                customer = stripe_api.Customer.retrieve(subscription.stripe_customer_id)
+            except InvalidRequestError as e:
+                logger.warning(f"Invalid Stripe customer ID found: {subscription.stripe_customer_id}. Creating new one.")
+                customer = stripe_api.Customer.create(email=user.email)
+                subscription.stripe_customer_id = customer.id
+                subscription.save()
 
         try:
             session = stripe_api.checkout.Session.create(
