@@ -2,7 +2,6 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from common.permission import (
@@ -214,7 +213,10 @@ class EndUserVideoAudioEditRequestView(generics.ListCreateAPIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+@extend_schema(
+    summary="Get a specific video or audio edit request for the end user",
+    tags=["End User"]
+)
 class EndUserVideoAudioEditRequestRetrieveView(generics.RetrieveAPIView):
     available_permission_classes = (
         IsSuperAdmin,
