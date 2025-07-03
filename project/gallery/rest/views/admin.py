@@ -20,9 +20,17 @@ from common.permission import IsAdmin, IsSuperAdmin, CheckAnyPermission
 from gallery.choices import RequestType
 from gallery.filters import GalleryFilter
 from gallery.models import Gallery, EditRequest
-from gallery.rest.serializers.admin import GalleryUploadSerializer, DownloadRequestSerializer
-from gallery.rest.serializers.end_user import EditRequestListSerializer, SouvenirEditRequestListSerializer, \
+from gallery.rest.serializers.admin import (
+    GalleryDetailSerializer,
+    GalleryUploadSerializer,
+    DownloadRequestSerializer,
+    GalleryDetailSerializer
+)
+from gallery.rest.serializers.end_user import (
+    EditRequestListSerializer,
+    SouvenirEditRequestListSerializer,
     EditRequestUpdateStatusSerializer
+)
 
 
 @extend_schema(
@@ -44,6 +52,34 @@ class GalleryListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         serializer.save(created_by=user, updated_by=user)
+
+@extend_schema(
+    summary="Gallery detail, update and delete for Admin Users only",
+    tags=["Admin"],
+)
+class GalleryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    available_permission_classes = (
+        IsAdmin,
+        IsSuperAdmin
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = GalleryDetailSerializer
+    queryset = Gallery.objects.all()
+
+    def get_object(self):
+        uid = self.kwargs.get('uid')
+        try:
+            return Gallery.objects.get(uid=uid)
+        except Gallery.DoesNotExist:
+            raise NotFound
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        serializer.save(updated_by=user)
+
+
+    def perform_destroy(self, instance):
+        instance.delete()
 
 
 @extend_schema(

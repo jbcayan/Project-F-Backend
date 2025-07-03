@@ -26,6 +26,27 @@ class GalleryUploadSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class GalleryDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Gallery
+        fields = [
+            "uid",
+            "title",
+            "code",
+            "description",
+            "status",
+            "file_type",
+            "file",
+            "price",
+        ]
+        read_only_fields = ["uid"]
+
+    def validate(self, attrs):
+        validate_file_matches_type(attrs.get('file'), attrs.get('file_type'))
+        return attrs
+
+
+
 class DownloadRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField()

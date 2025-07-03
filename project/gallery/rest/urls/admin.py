@@ -2,6 +2,7 @@ from django.urls import path
 
 from gallery.rest.views.admin import (
     GalleryListCreateView,
+    GalleryRetrieveUpdateDestroyView,
     AdminPhotoEditRequestView,
     AdminVideoAudioEditRequestView,
     AdminSouvenirRequestView,
@@ -17,6 +18,11 @@ urlpatterns = [
         "",
         GalleryListCreateView.as_view(),
         name="gallery-list-create"
+    ),
+    path(
+        "/<str:uid>",
+        GalleryRetrieveUpdateDestroyView.as_view(),
+        name="gallery-retrieve-update-destroy"
     ),
     path(
         "/photo-edit-requests",
