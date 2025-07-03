@@ -139,6 +139,7 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
+            "uid",
             "email",
             "is_active",
             "kind",
@@ -146,6 +147,8 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_subscribed",
         ]
         read_only_fields = [
+            "uid",
+            "email",
             "is_subscribed",
         ]
 
