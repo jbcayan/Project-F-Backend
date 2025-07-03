@@ -2,6 +2,7 @@
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, generics
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -131,3 +132,31 @@ class UserListView(generics.ListAPIView):
 
     serializer_class = UserListSerializer
     queryset = User.objects.all()
+
+
+@extend_schema(
+    summary="End Point for user Detail, Update and Delete for Admin User",
+    tags=["Admin"],
+)
+class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    available_permission_classes = (
+        IsSuperAdmin,
+        IsAdmin,
+        IsEndUser,
+    )
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = UserListSerializer
+
+    def get_object(self):
+        user_uid = self.kwargs['uid']
+        try:
+            return User.objects.get(uid=user_uid)
+        except User.DoesNotExist:
+            raise NotFound
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+

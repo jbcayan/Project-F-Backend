@@ -133,7 +133,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
-    is_subscribed = serializers.SerializerMethodField()
+    is_subscribed = serializers.SerializerMethodField(
+        read_only=True,
+    )
     class Meta:
         model = User
         fields = [
@@ -141,6 +143,9 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_active",
             "kind",
             "is_verified",
+            "is_subscribed",
+        ]
+        read_only_fields = [
             "is_subscribed",
         ]
 
