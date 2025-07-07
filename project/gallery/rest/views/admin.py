@@ -410,6 +410,7 @@ class AdminDownloadRequestView(generics.ListAPIView):
     available_permission_classes = (IsAdmin, IsSuperAdmin)
     permission_classes = (CheckAnyPermission,)
     serializer_class = DownloadSerializer
+    pagination_class = None
 
     def get_queryset(self):
         start_date = self.request.query_params.get('start_date')
@@ -436,10 +437,14 @@ class AdminDownloadRequestView(generics.ListAPIView):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
 
-        # Insert the custom field
-        response.data['date_range'] = f"{start_date}_to_{end_date}"
-        return response
+        # Return a manually constructed response
+        return Response({
+            "date_range": f"{start_date}_to_{end_date}",
+            "results": serializer.data
+        })
