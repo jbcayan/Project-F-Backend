@@ -54,3 +54,40 @@ class DownloadRequestSerializer(serializers.Serializer):
         choices=RequestType.choices,
         required=True
     )
+
+
+class FileSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EditRequestGallery
+        fields = [
+            "file",
+        ]
+
+    def get_file(self, obj):
+        request_type = obj.edit_request.request_type
+
+        if request_type == RequestType.SOUVENIR_REQUEST:
+            return obj.gallery.file.url if obj.gallery and obj.gallery.file else None
+        return obj.user_request_file.url if obj.user_request_file else None
+
+class DownloadSerializer(serializers.ModelSerializer):
+    files = FileSerializer(many=True, read_only=True, source='request_files')
+
+    class Meta:
+        model = EditRequest
+        fields = [
+            "uid",
+            "title",
+            "code",
+            "description",
+            "special_note",
+            "request_status",
+            'request_type',
+            "desire_delivery_date",
+            "shipping_address",
+            "additional_notes",
+            "files",
+            "created_at",
+        ]

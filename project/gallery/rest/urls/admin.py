@@ -11,6 +11,7 @@ from gallery.rest.views.admin import (
     AdminVideoAudioEditRequestRetrieveView,
     AdminVideoAudioEditRequestUpdateStatusView,
     EditRequestDownloadView,
+    AdminDownloadRequestView,
 )
 
 urlpatterns = [
@@ -48,6 +49,11 @@ urlpatterns = [
         "/download",
         EditRequestDownloadView.as_view(),
         name="edit-request-download"
+    ),
+    path(
+        "/download-requests",
+        AdminDownloadRequestView.as_view(),
+        name="admin-download-request"
     ),
     path(
         "/video-audio-edit-requests/<str:uid>/update-status",

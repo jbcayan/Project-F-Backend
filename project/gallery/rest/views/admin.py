@@ -24,7 +24,7 @@ from gallery.rest.serializers.admin import (
     GalleryDetailSerializer,
     GalleryUploadSerializer,
     DownloadRequestSerializer,
-    GalleryDetailSerializer
+    GalleryDetailSerializer, DownloadSerializer
 )
 from gallery.rest.serializers.end_user import (
     EditRequestListSerializer,
@@ -368,4 +368,74 @@ class EditRequestDownloadView(generics.GenericAPIView):
         filename = f"{serializer.validated_data['start_date']}_to_{serializer.validated_data['end_date']}.zip"
         response = FileResponse(zip_buffer, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import make_aware, is_naive
+
+@extend_schema(
+    summary="Download edit requests for Admin Users only",
+    tags=["Admin"],
+    parameters=[
+        OpenApiParameter(
+            name='start_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='Start date for filtering requests (YYYY-MM-DD)'
+        ),
+        OpenApiParameter(
+            name='end_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='End date for filtering requests (YYYY-MM-DD)'
+        ),
+        OpenApiParameter(
+            name='request_type',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description='Filter by specific request type',
+            enum=[choice[0] for choice in RequestType.choices]  # Show all available choices
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(description='Zip file containing all edit requests'),
+        400: OpenApiResponse(description='Invalid input data'),
+        403: OpenApiResponse(description='Permission denied')
+    }
+)
+class AdminDownloadRequestView(generics.ListAPIView):
+    available_permission_classes = (IsAdmin, IsSuperAdmin)
+    permission_classes = (CheckAnyPermission,)
+    serializer_class = DownloadSerializer
+
+    def get_queryset(self):
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        request_type = self.request.query_params.get('request_type')
+
+        # Parse the date strings
+        start = parse_datetime(start_date) or datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end = parse_datetime(end_date) or datetime.datetime.strptime(end_date, "%Y-%m-%d")
+
+        # Make them timezone-aware if they are naive
+        if is_naive(start):
+            start = make_aware(start)
+        if is_naive(end):
+            end = make_aware(end)
+
+        return EditRequest.objects.filter(
+            created_at__range=(start, end),
+            request_type=request_type
+        )
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        # Insert the custom field
+        response.data['date_range'] = f"{start_date}_to_{end_date}"
         return response
