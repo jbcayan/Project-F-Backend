@@ -267,6 +267,8 @@ class AdminSouvenirRequestView(generics.ListAPIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 
+import concurrent.futures
+
 @extend_schema(
     summary="Download edit requests for Admin Users only",
     tags=["Admin"],
@@ -319,9 +321,7 @@ class EditRequestDownloadView(generics.GenericAPIView):
         ).prefetch_related('request_files__gallery')
 
         if not requests_items.exists():
-            return Response({
-                'message': 'No edit requests found.'
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'No edit requests found.'}, status=status.HTTP_404_NOT_FOUND)
 
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
@@ -333,11 +333,9 @@ class EditRequestDownloadView(generics.GenericAPIView):
                 csv_buffer = io.StringIO()
                 csv_writer = csv.writer(csv_buffer)
                 csv_writer.writerow([
-                    'title', 'special_note', 'description', 'request_status',
-                    'desire_delivery_date', 'request_type', 'shipping_address',
-                    'additional_notes', 'file_urls'
+                    'title', 'special_note', 'description', 'request_status', 'desire_delivery_date',
+                    'request_type', 'shipping_address', 'additional_notes', 'file_urls'
                 ])
-
                 file_urls = ';'.join([f.user_request_file.url for f in files if f.user_request_file])
                 csv_writer.writerow([
                     req.title, req.special_note, req.description, req.request_status,
@@ -346,20 +344,28 @@ class EditRequestDownloadView(generics.GenericAPIView):
                 ])
                 zip_file.writestr(folder_name + 'data.csv', csv_buffer.getvalue())
 
-                # Media files
-                for f in files:
+                # Download files in parallel
+                def download_file(f):
                     if f.user_request_file and f.user_request_file.url:
                         try:
                             response = requests.get(f.user_request_file.url, timeout=10)
-                            response.raise_for_status()  # Raise exception for bad status
+                            response.raise_for_status()
                             filename = os.path.basename(f.user_request_file.name)
-                            zip_file.writestr(folder_name + filename, response.content)
+                            return (filename, response.content)
                         except Exception as e:
                             print(f"Error downloading {f.user_request_file.url}: {str(e)}")
-                            continue
+                    return None
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                    future_to_file = {executor.submit(download_file, f): f for f in files}
+                    for future in concurrent.futures.as_completed(future_to_file):
+                        result = future.result()
+                        if result:
+                            filename, content = result
+                            zip_file.writestr(folder_name + filename, content)
 
         zip_buffer.seek(0)
-        filename = f"edit_requests_{serializer.validated_data['start_date']}_to_{serializer.validated_data['end_date']}.zip"
+        filename = f"{serializer.validated_data['start_date']}_to_{serializer.validated_data['end_date']}.zip"
         response = FileResponse(zip_buffer, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

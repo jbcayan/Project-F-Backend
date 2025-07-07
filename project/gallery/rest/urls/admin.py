@@ -20,11 +20,6 @@ urlpatterns = [
         name="gallery-list-create"
     ),
     path(
-        "/<str:uid>",
-        GalleryRetrieveUpdateDestroyView.as_view(),
-        name="gallery-retrieve-update-destroy"
-    ),
-    path(
         "/photo-edit-requests",
         AdminPhotoEditRequestView.as_view(),
         name="admin-photo-edit-request"
@@ -50,6 +45,11 @@ urlpatterns = [
         name="admin-video-audio-edit-request-retrieve"
     ),
     path(
+        "/download",
+        EditRequestDownloadView.as_view(),
+        name="edit-request-download"
+    ),
+    path(
         "/video-audio-edit-requests/<str:uid>/update-status",
         AdminVideoAudioEditRequestUpdateStatusView.as_view(),
         name="admin-video-audio-edit-request-update-status"
@@ -60,8 +60,8 @@ urlpatterns = [
         name="admin-souvenir-request"
     ),
     path(
-        "/download",
-        EditRequestDownloadView.as_view(),
-        name="edit-request-download"
+        "/<str:uid>",
+        GalleryRetrieveUpdateDestroyView.as_view(),
+        name="gallery-retrieve-update-destroy"
     ),
 ]
