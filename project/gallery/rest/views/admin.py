@@ -414,7 +414,7 @@ class AdminDownloadRequestView(generics.ListAPIView):
     def get_queryset(self):
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
-        request_type = self.request.query_params.get('request_type')
+        request_type = self.request.query_params.get('request_type', None)
 
         # Parse the date strings
         start = parse_datetime(start_date) or datetime.datetime.strptime(start_date, "%Y-%m-%d")
@@ -426,10 +426,14 @@ class AdminDownloadRequestView(generics.ListAPIView):
         if is_naive(end):
             end = make_aware(end)
 
-        return EditRequest.objects.filter(
+        queryset = EditRequest.objects.filter(
             created_at__range=(start, end),
-            request_type=request_type
-        )
+        ).prefetch_related('request_files__gallery')
+
+        if request_type:
+            queryset = queryset.filter(request_type=request_type)
+
+        return queryset
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
