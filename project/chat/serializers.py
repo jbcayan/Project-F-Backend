@@ -12,7 +12,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'thread',
-            'sender',
+            # 'sender',
             'sender_email',
             'sender_kind',
             'text',
@@ -44,7 +44,7 @@ class ChatThreadSerializer(serializers.ModelSerializer):
         model = ChatThread
         fields = [
             'id',
-            'user',
+            # 'user',
             'user_email',
             'created_at',
             'messages',
@@ -52,7 +52,7 @@ class ChatThreadSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'created_at',
-            'user',
+            # 'user',
             'user_email',
             'messages',
         ]
