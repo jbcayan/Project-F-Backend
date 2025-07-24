@@ -73,16 +73,16 @@ Make sure you have **Docker** and **Docker Compose** installed.
 
 
 # Run migrations
-    docker-compose exec web python manage.py migrate
+    docker-compose exec f_backend python manage.py migrate
 
 # Create superuser
-    docker-compose exec web python manage.py createsuperuser
+    docker-compose exec f_backend python manage.py createsuperuser
 
 # Collect static files
-    docker-compose exec web python manage.py collectstatic
+    docker-compose exec f_backend python manage.py collectstatic
 
 # Access shell
-    docker-compose exec web python manage.py shell
+    docker-compose exec f_backend python manage.py shell
 ```
 
 
