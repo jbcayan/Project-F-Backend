@@ -21,7 +21,7 @@ A Django REST Framework (DRF)-based backend for a platform where users can brows
 ## Clone the repository
 
 ```bash
-  git clone https://github.com/your-username/media-service-platform.git
+  git clone https://github.com/jbcayan/Project-F-Backend.git
 ```
 
 ## move to project directory
