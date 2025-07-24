@@ -176,14 +176,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://project-xyz-beta-tq7q.vercel.app",
     "http://localhost:8888",
-    "http://15.206.185.80",
-    "https://15.206.185.80",
-    "http://18.206.250.91",   # AWS FE
-    "https://18.206.250.91",   # AWS FE
-    "http://43.206.143.116",
-    "https://43.206.143.116",
+    "http://13.115.164.94",
+    "https://13.115.164.94",
     "http://app.examplesite.jp",
     "https://app.examplesite.jp",
 ]
@@ -212,18 +207,11 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://13.208.176.127",
-    "http://13.208.176.127",
-    "https://project-xyz-beta-tq7q.vercel.app",
-    "http://15.206.185.80",
-    "https://15.206.185.80",
     "http://localhost:8888",
-    "http://18.206.250.91",   # AWS FE
-    "https://18.206.250.91",   # AWS FE
-    "http://43.206.143.116",
-    "https://43.206.143.116",
-    "http://app.examplesite.jp",
-    "https://app.examplesite.jp",
+    "http://13.115.164.94",   # AWS FE
+    "https://13.115.164.94",  # AWS FE
+    "http://app.examplesite.jp",  # FE domain
+    "https://app.examplesite.jp",  # FE domain
 ]
 
 SESSION_COOKIE_SECURE = False
