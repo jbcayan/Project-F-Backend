@@ -168,20 +168,20 @@ SIMPLE_JWT = {
 # ===========================
 CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8888",
-    "http://13.115.164.94",
-    "https://13.115.164.94",
-    "http://app.examplesite.jp",
-    "https://app.examplesite.jp",
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+#     "http://localhost:3001",
+#     "http://127.0.0.1:3001",
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+#     "http://localhost:8888",
+#     "http://13.115.164.94",
+#     "https://13.115.164.94",
+#     "http://app.examplesite.jp",
+#     "https://app.examplesite.jp",
+# ]
 
 CORS_ALLOW_METHODS = (
     "DELETE",
@@ -202,16 +202,18 @@ CORS_ALLOW_HEADERS = (
 )
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8888",
-    "http://13.115.164.94",   # AWS FE
-    "https://13.115.164.94",  # AWS FE
-    "http://app.examplesite.jp",  # FE domain
-    "https://app.examplesite.jp",  # FE domain
+    # "http://localhost:5173",
+    # "http://localhost:3000",
+    # "http://127.0.0.1:3000",
+    # "http://localhost:8000",
+    # "http://127.0.0.1:8000",
+    # "http://localhost:8888",
+    # "http://13.115.164.94",   # AWS FE
+    # "https://13.115.164.94",  # AWS FE
+    # "http://app.examplesite.jp",  # FE domain
+    # "https://app.examplesite.jp",  # FE domain
+    "http://*",
+    "https://*",
 ]
 
 SESSION_COOKIE_SECURE = False
