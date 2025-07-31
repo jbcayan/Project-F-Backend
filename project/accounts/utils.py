@@ -5,6 +5,10 @@ from django.utils.timezone import now
 
 from accounts.models import OTP
 from payment_service.models import UserSubscription, SubscriptionStatus
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.conf import settings
 
 
 def generate_unique_otp(length=6) -> str:
@@ -44,6 +48,12 @@ def is_user_subscribed(user):
         return True
 
     return False
+
+
+def generate_password_reset_token_url(user):
+    uid64 = urlsafe_base64_encode(force_bytes(user.id))
+    token = PasswordResetTokenGenerator().make_token(user)
+    return f"{settings.FRONTEND_URL}/reset-password/{uid64}/{token}"
 
 
 

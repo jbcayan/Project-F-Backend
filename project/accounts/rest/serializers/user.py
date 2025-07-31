@@ -154,3 +154,55 @@ class UserListSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, obj):
         return is_user_subscribed(obj)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if not self.context["request"].user.check_password(attrs["old_password"]):
+            raise serializers.ValidationError(
+                {"old_password": "Old password is not correct"}
+            )
+        if attrs["new_password"] == attrs["old_password"]:
+            raise serializers.ValidationError(
+                {"new_password": "New password cannot be same as old password"}
+            )
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords didn't match."}
+            )
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user associated with this email address.")
+        return value
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords didn't match."})
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user
