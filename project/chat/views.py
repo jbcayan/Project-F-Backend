@@ -31,6 +31,11 @@ class ChatThreadViewSet(viewsets.ModelViewSet):
             return ChatThread.objects.all()
         return ChatThread.objects.filter(user=user)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     @action(detail=True, methods=['post'], url_path='mark_all_read')
     def mark_all_read(self, request, pk=None):
         """

@@ -39,6 +39,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 class ChatThreadSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     messages = ChatMessageSerializer(many=True, read_only=True)
+    unread_messages_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ChatThread
@@ -48,6 +49,7 @@ class ChatThreadSerializer(serializers.ModelSerializer):
             'user_email',
             'created_at',
             'messages',
+            "unread_messages_count",
         ]
         read_only_fields = [
             'id',
@@ -56,6 +58,18 @@ class ChatThreadSerializer(serializers.ModelSerializer):
             'user_email',
             'messages',
         ]
+
+    def get_unread_messages_count(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return 0
+        user = request.user
+        if hasattr(user, 'kind'):
+            if user.kind in ['ADMIN', 'SUPER_ADMIN']:
+                return obj.messages.filter(is_read=False, sender__kind='END_USER').count()
+            else:
+                return obj.messages.filter(is_read=False).exclude(sender=user).count()
+        return 0
 
     def create(self, validated_data):
         """
