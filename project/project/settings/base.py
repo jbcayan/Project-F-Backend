@@ -52,10 +52,10 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     # "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -205,16 +205,17 @@ CORS_ALLOW_HEADERS = (
 )
 
 CSRF_TRUSTED_ORIGINS = [
-    # "http://localhost:5173",
-    # "http://localhost:3000",
-    # "http://127.0.0.1:3000",
-    # "http://localhost:8000",
-    # "http://127.0.0.1:8000",
-    # "http://localhost:8888",
-    # "http://13.115.164.94",   # AWS FE
-    # "https://13.115.164.94",  # AWS FE
-    # "http://app.examplesite.jp",  # FE domain
-    # "https://app.examplesite.jp",  # FE domain
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8888",
+    "http://13.115.164.94",   # AWS FE
+    "https://13.115.164.94",  # AWS FE
+    "http://app.examplesite.jp",  # FE domain
+    "https://app.examplesite.jp",  # FE domain
+    "https://api-dev.examplesite.jp",
     "http://*",
     "https://*",
 ]
