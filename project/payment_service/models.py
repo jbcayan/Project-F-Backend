@@ -27,6 +27,76 @@ class SubscriptionPlan(models.Model):
         return f"{self.name} - {self.amount} {self.currency}"
 
 
+class TransactionToken(models.Model):
+    """Store transaction tokens created by frontend widget"""
+    TOKEN_TYPE_CHOICES = [
+        ('one_time', 'One Time'),
+        ('subscription', 'Subscription'),
+        ('recurring', 'Recurring'),
+    ]
+    
+    PAYMENT_TYPE_CHOICES = [
+        ('card', 'Credit Card'),
+        ('paidy', 'Paidy'),
+        ('online', 'Online Payment'),
+        ('konbini', 'Convenience Store'),
+        ('bank_transfer', 'Bank Transfer'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transaction_tokens')
+    univapay_token_id = models.UUIDField(unique=True, db_index=True)
+    token_type = models.CharField(max_length=20, choices=TOKEN_TYPE_CHOICES)
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES, default='card')
+    
+    # Email from token creation
+    email = models.EmailField()
+    
+    # Card details (if payment_type is 'card')
+    card_last_four = models.CharField(max_length=4, null=True, blank=True)
+    card_brand = models.CharField(max_length=50, null=True, blank=True)
+    card_exp_month = models.IntegerField(null=True, blank=True)
+    card_exp_year = models.IntegerField(null=True, blank=True)
+    card_bin = models.CharField(max_length=8, null=True, blank=True)
+    card_type = models.CharField(max_length=20, null=True, blank=True)
+    card_category = models.CharField(max_length=20, null=True, blank=True)
+    card_issuer = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Billing information
+    billing_data = models.JSONField(default=dict, blank=True)  # Full billing address data
+    
+    # CVV authorization status (for recurring tokens)
+    cvv_authorize_enabled = models.BooleanField(default=False)
+    cvv_authorize_status = models.CharField(max_length=20, null=True, blank=True)  # pending, current, failed, inactive
+    
+    # 3D Secure settings
+    three_ds_enabled = models.BooleanField(default=False)
+    three_ds_status = models.CharField(max_length=20, null=True, blank=True)
+    
+    # Token status
+    is_active = models.BooleanField(default=True)
+    usage_limit = models.CharField(max_length=20, null=True, blank=True)  # daily, weekly, monthly, annually, null
+    mode = models.CharField(max_length=10, default='test')  # test or live
+    
+    # Raw response from UnivaPay when token was created
+    raw_token_data = models.JSONField(default=dict, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['univapay_token_id']),
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['user', 'token_type']),
+        ]
+        
+    def __str__(self):
+        if self.card_brand and self.card_last_four:
+            return f"{self.user} - {self.card_brand} ****{self.card_last_four}"
+        return f"{self.user} - {self.univapay_token_id}"
+
+
 class PaymentHistory(models.Model):
     # Payment type choices
     PAYMENT_TYPE_CHOICES = [
@@ -83,18 +153,33 @@ class PaymentHistory(models.Model):
     ]
 
     # Common fields for both payment types
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payment_history')
     payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE_CHOICES)
-    univapay_id = models.UUIDField()  # ID from Univapay response
-    store_id = models.UUIDField()
-    transaction_token_id = models.UUIDField()
+    
+    # Link to transaction token - ADDED
+    transaction_token = models.ForeignKey(
+        TransactionToken,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments'
+    )
+    
+    # UnivaPay IDs - CORRECTED to be nullable
+    univapay_id = models.UUIDField(null=True, blank=True, db_index=True)
+    store_id = models.UUIDField(null=True, blank=True)
+    univapay_transaction_token_id = models.UUIDField(null=True, blank=True)
+    
     amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
     currency = models.CharField(max_length=3)
     amount_formatted = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     only_direct_currency = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict)
     mode = models.CharField(max_length=10)  # test or live
-    created_on = models.DateTimeField()  # From Univapay's created_on
+    created_on = models.DateTimeField(null=True, blank=True)  # CORRECTED to be nullable
+    
+    # Raw JSON response - ADDED (was missing)
+    raw_json = models.JSONField(default=dict, blank=True)
 
     # Status field - will be interpreted based on payment_type
     status = models.CharField(max_length=20)
@@ -199,6 +284,7 @@ class PaymentHistory(models.Model):
             models.Index(fields=['univapay_id']),
             models.Index(fields=['user', 'created_at']),
             models.Index(fields=['payment_type', 'status']),
+            models.Index(fields=['transaction_token', 'created_at']),  # ADDED index
         ]
 
     def __str__(self):

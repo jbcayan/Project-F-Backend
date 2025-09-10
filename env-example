@@ -29,6 +29,11 @@ EMAIL_HOST_PASSWORD=""
 
 
 
-# Stripe Secrets
-Stripe_Public_Key = Your_Stripe_Key
-Stripe_Secret_Key = Your_Stripe_Key
+# UnivaPay (TEST creds for sandbox)
+UNIVAPAY_APP_TOKEN=
+UNIVAPAY_APP_SECRET=
+# Base URL (docs use this; mode is determined by your token)
+UNIVAPAY_BASE_URL=https://api.univapay.com
+# Optional: simple shared token that UnivaPay will echo in webhook header "authorization"
+UNIVAPAY_WEBHOOK_AUTH=some-long-random-string
+UNIVAPAY_STORE_ID=
