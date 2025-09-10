@@ -1,27 +1,18 @@
-from django.urls import path
-from .views import (
-    SubscriptionPlanListView,
-    CreateCheckoutSessionView,
-    ConfirmSubscriptionView,
-    CancelSubscriptionView,
-    SubscriptionStatusView,
-)
+# urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
+from . import views
 
-
-from .views import CreateStripeCheckoutSessionAPIView, PaymentHistoryListAPIView, VerifyStripeSessionAPIView
-
+router = DefaultRouter()
+router.register(r'subscription-plans', views.SubscriptionPlanViewSet, basename='subscriptionplan')
+router.register(r'payment-history', views.PaymentHistoryViewSet, basename='paymenthistory')
 
 urlpatterns = [
-    path("subscription/plans/", SubscriptionPlanListView.as_view(), name="list-subscription-plans"),
-    path("subscription/subscribe/", CreateCheckoutSessionView.as_view(), name="create-checkout-session"),
-    path("subscription/confirm/", ConfirmSubscriptionView.as_view(), name="confirm-subscription"),
-    path("subscription/cancel/", CancelSubscriptionView.as_view(), name="cancel-subscription"),
-    path("subscription/status/", SubscriptionStatusView.as_view(), name="subscription-status"),
-
-
-    # Product Payment URLs
-    path("product/create/", CreateStripeCheckoutSessionAPIView.as_view(), name="create-stripe-payment"),
-    path("product/history/", PaymentHistoryListAPIView.as_view(), name="payment-history"),
-    path("product/verify/", VerifyStripeSessionAPIView.as_view(), name="verify-stripe-session"),
+    path('', include(router.urls)),
+    path('purchase/', views.purchase, name='purchase'),
+    path('subscribe/', views.subscribe, name='subscribe'),
+    path('univapay/charge/', views.univapay_charge, name='univapay_charge'),
+    path('univapay/subscription/', views.univapay_subscription, name='univapay_subscription'),
+    path('univapay/webhook/', views.univapay_webhook, name='univapay_webhook'),
 ]

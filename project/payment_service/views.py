@@ -1,432 +1,394 @@
-from rest_framework.generics import ListAPIView
-from rest_framework.views import APIView
+# views.py
+import os
+import json
+import threading
+import time
+from datetime import datetime, timedelta
+from django.utils.timezone import now, make_aware
+
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from django.utils import timezone
-from django.utils.timezone import is_naive
-from django.utils.timezone import make_aware
-from datetime import datetime
-from .models import SubscriptionPlan, UserSubscription, SubscriptionStatus
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
+
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
+from .models import SubscriptionPlan, PaymentHistory
 from .serializers import (
-    SubscriptionPlanSerializer,
-    CreateCheckoutSessionSerializer,
-    ConfirmSubscriptionSerializer,
+    UserSerializer, SubscriptionPlanSerializer,
+    PurchaseSerializer, SubscribeSerializer, UnivapayChargeSerializer,
+    UnivapaySubscriptionSerializer, PaymentHistorySerializer,
+    WebhookEventSerializer
 )
-from .stripe_client import init_stripe
-import stripe
-import logging
+from .univapay_client import UnivapayClient, UnivapayError
 
-logger = logging.getLogger(__name__)
-
-
-def make_aware_safe(dt):
-    return timezone.make_aware(dt) if is_naive(dt) else dt
+# Constants
+POLL_AFTER_SECONDS = os.environ.get("POLL_AFTER_SECONDS" or 30)
+POLL_RETRY_AFTER_SECONDS = os.environ.get("POLL_RETRY_AFTER_SECONDS" or 60)
+ENABLE_POLL_FALLBACK = os.environ.get("ENABLE_POLL_FALLBACK" or True)
 
 
-class SubscriptionPlanListView(ListAPIView):
-    queryset = SubscriptionPlan.objects.filter(is_active=True).order_by("amount_jpy")
+# Helper functions
+def _coerce_token_id(val):
+    """Accept a string or a dict and return a trimmed string id."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val.strip()
+    if isinstance(val, dict):
+        cand = val.get("id") or val.get("token_id") or val.get("univapayTokenId")
+        if isinstance(cand, str):
+            return cand.strip()
+        return (str(cand) if cand is not None else "").strip()
+    return str(val).strip()
+
+
+def _poll_provider_status_later(kind, provider_id, delay_s, retry=False):
+    """
+    Schedule a one-off background poll to refresh provider status.
+    kind: 'charge' | 'subscription'
+    provider_id: PaymentHistory.id
+    delay_s: seconds to wait
+    retry: whether this is the second attempt
+    """
+    if not ENABLE_POLL_FALLBACK:
+        return
+
+    def _task():
+        time.sleep(delay_s)
+        try:
+            payment = PaymentHistory.objects.get(id=provider_id)
+            univapay = UnivapayClient()
+
+            if kind == "charge" and payment.univapay_id:
+                data = univapay.get_charge(payment.univapay_id)
+            elif kind == "subscription" and payment.univapay_id:
+                data = univapay.get_subscription(payment.univapay_id)
+            else:
+                return
+
+            status_val = (data or {}).get("status")
+            if status_val:
+                payment.status = status_val
+                payment.save(update_fields=['status'])
+
+                # Optional: second attempt if still "pending/awaiting" for charges
+                if not retry and kind == "charge" and (status_val in ("pending", "awaiting") or not status_val):
+                    _poll_provider_status_later(kind, provider_id, POLL_RETRY_AFTER_SECONDS, retry=True)
+
+        except Exception as e:
+            print(f"[Poller] Error polling {kind} provider_id={provider_id}: {e}")
+
+    thread = threading.Thread(target=_task)
+    thread.daemon = True
+    thread.start()
+
+
+# Subscription Plan Views
+class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SubscriptionPlan.objects.filter(is_active=True)
     serializer_class = SubscriptionPlanSerializer
-    permission_classes = []
+    permission_classes = [AllowAny]
 
 
-from stripe.error import InvalidRequestError
-
-class CreateCheckoutSessionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        serializer = CreateCheckoutSessionSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = request.user
-        plan = serializer.validated_data["plan"]
-        success_url = serializer.validated_data["success_url"]
-        cancel_url = serializer.validated_data["cancel_url"]
-
-        stripe_api = init_stripe()
-        subscription, _ = UserSubscription.objects.get_or_create(user=user)
-
-        # Create or retrieve Stripe customer
-        customer = None
-        if not subscription.stripe_customer_id:
-            customer = stripe_api.Customer.create(email=user.email)
-            subscription.stripe_customer_id = customer.id
-            subscription.save()
-        else:
-            try:
-                customer = stripe_api.Customer.retrieve(subscription.stripe_customer_id)
-            except InvalidRequestError as e:
-                logger.warning(f"Invalid Stripe customer ID found: {subscription.stripe_customer_id}. Creating new one.")
-                customer = stripe_api.Customer.create(email=user.email)
-                subscription.stripe_customer_id = customer.id
-                subscription.save()
-
-        try:
-            session = stripe_api.checkout.Session.create(
-                customer=customer.id,
-                payment_method_types=["card"],
-                line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
-                mode="subscription",
-                success_url=success_url,
-                cancel_url=cancel_url,
-                metadata={
-                    "user_id": str(user.id),
-                    "plan_id": str(plan.uid),
-                },
-            )
-
-            # Store session ID for retry/reference
-            subscription.stripe_checkout_session_id = session.id
-            subscription.save()
-
-            return Response({
-                "checkout_url": session.url,
-                "session_id": session.id
-            }, status=status.HTTP_200_OK)
-
-        except stripe.error.StripeError as e:
-            logger.exception("Stripe error during checkout session creation")
-            return Response(
-                {"detail": f"Stripe error: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-
-
-class CancelSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        user = request.user
-        try:
-            subscription = user.subscription
-        except UserSubscription.DoesNotExist:
-            return Response({"detail": "You do not have a subscription."}, status=404)
-
-        if not subscription.stripe_subscription_id:
-            return Response({"detail": "No active Stripe subscription found."}, status=400)
-
-        if subscription.cancel_at_period_end:
-            return Response({"detail": "Your subscription is already scheduled to cancel."}, status=400)
-
-        stripe_api = init_stripe()
-
-        try:
-            updated = stripe_api.Subscription.modify(
-                subscription.stripe_subscription_id,
-                cancel_at_period_end=True,
-            )
-
-            subscription.cancel_at_period_end = True
-            end_timestamp = updated.get("current_period_end")
-            if end_timestamp:
-                subscription.current_period_end = make_aware_safe(datetime.fromtimestamp(end_timestamp))
-
-            subscription.save()
-
-            return Response({
-                "detail": "Subscription will be canceled at the end of the billing period.",
-                "ends_on": subscription.current_period_end,
-            }, status=200)
-
-        except stripe.error.StripeError as e:
-            logger.exception("Stripe error during cancel subscription")
-            return Response(
-                {"detail": f"Stripe error: {str(e)}"},
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-
-
-class SubscriptionStatusView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        try:
-            subscription = user.subscription
-        except UserSubscription.DoesNotExist:
-            return Response({
-                "has_subscription": False,
-                "is_premium": False
-            }, status=200)
-
-        return Response({
-            "has_subscription": True,
-            "is_premium": subscription.is_premium,
-            "plan_name": subscription.subscription_plan.name if subscription.subscription_plan else None,
-            "status": subscription.status,
-            "current_period_end": subscription.current_period_end,
-            "cancel_at_period_end": subscription.cancel_at_period_end,
-        }, status=200)
-
-
-class ConfirmSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        serializer = ConfirmSubscriptionSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        session_id = serializer.validated_data["session_id"]
-
-        stripe_api = init_stripe()
-
-        try:
-            # Step 1: Retrieve checkout session
-            session = stripe_api.checkout.Session.retrieve(session_id)
-
-            # Step 2: Get subscription ID from session
-            stripe_subscription_id = session.get("subscription")
-            if not stripe_subscription_id:
-                return Response({"detail": "Subscription not found in session."}, status=400)
-
-            # Step 3: Retrieve full subscription (including items)
-            stripe_subscription = stripe_api.Subscription.retrieve(
-                stripe_subscription_id,
-                expand=["items"]
-            )
-
-            # Step 4: Get plan from session metadata
-            plan_id = session.metadata.get("plan_id")
-            try:
-                plan = SubscriptionPlan.objects.get(uid=plan_id)
-            except SubscriptionPlan.DoesNotExist:
-                return Response({"detail": "Subscription plan not found."}, status=400)
-
-            # Step 5: Safely extract timestamps
-            start_timestamp = stripe_subscription.get("start_date")
-
-            # Stripe v2024+ stores current_period_end per item
-            items = stripe_subscription.get("items", {}).get("data", [])
-            first_item = items[0] if items else {}
-            end_timestamp = first_item.get("current_period_end")
-
-            # Step 6: Save to UserSubscription
-            subscription, _ = UserSubscription.objects.get_or_create(user=request.user)
-            subscription.subscription_plan = plan
-            subscription.stripe_subscription_id = stripe_subscription.id
-            subscription.stripe_checkout_session_id = session.id
-            subscription.status = stripe_subscription.get("status")
-            subscription.start_date = make_aware(datetime.fromtimestamp(start_timestamp)) if start_timestamp else None
-            subscription.current_period_end = make_aware(datetime.fromtimestamp(end_timestamp)) if end_timestamp else None
-            subscription.cancel_at_period_end = stripe_subscription.get("cancel_at_period_end", False)
-            subscription.save()
-
-            return Response({
-                "detail": "Subscription confirmed successfully.",
-                "is_premium": subscription.is_premium,
-                "status": subscription.status,
-                "current_period_end": subscription.current_period_end,
-            }, status=200)
-
-        except stripe.error.StripeError as e:
-            logger.exception("Stripe error in confirmation")
-            return Response({"detail": f"Stripe error: {str(e)}"}, status=502)
-  
-
-
-
-
-
-###### Product Payment Views ##########
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status, generics, permissions, filters
-from django_filters.rest_framework import DjangoFilterBackend
-
-from payment_service.models import PaymentHistory
-from payment_service.serializers import PaymentHistorySerializer
-from payment_service.stripe_client import init_stripe
-
-from drf_spectacular.utils import (
-    extend_schema,
-    OpenApiParameter,
-    OpenApiExample,
-    inline_serializer,
-)
-from rest_framework import serializers
-
-import uuid
-from datetime import datetime
-from django.utils.timezone import make_aware
-
-stripe = init_stripe()
-
-
-# --------- Serializer for POST input ---------
-class CreateStripeCheckoutInputSerializer(serializers.Serializer):
-    order_id = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=0)  # JPY = no decimal
-    quantity = serializers.IntegerField(required=False, default=1)
-    success_url = serializers.URLField()
-    cancel_url = serializers.URLField()
-
-
-# --------- Create Stripe Checkout Session (JPY safe) ---------
-@extend_schema(
-    request=CreateStripeCheckoutInputSerializer,
-    responses={
-        200: inline_serializer(
-            name="StripeCheckoutResponse",
-            fields={"checkout_url": serializers.URLField()}
-        ),
-        400: OpenApiExample("Bad Request", value={"detail": "Missing required fields."}),
-        500: OpenApiExample("Stripe Error", value={"detail": "Stripe error: <error message>"}),
-    },
-    summary="Create Stripe Checkout Session (JPY)",
-    description="Creates a Stripe Checkout Session with amount in JPY and stores the initial PaymentHistory entry.",
-)
-class CreateStripeCheckoutSessionAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        user = request.user
-        order_id = request.data.get("order_id")
-        amount = request.data.get("amount")
-        quantity = request.data.get("quantity", 1)
-        success_url = request.data.get("success_url")
-        cancel_url = request.data.get("cancel_url")
-
-        if not all([order_id, amount, success_url, cancel_url]):
-            return Response(
-                {"detail": "Product ID, amount, success_url, and cancel_url are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            amount_jpy = int(float(amount))  # JPY does not support decimals
-            internal_uid = str(uuid.uuid4())
-
-            session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
-                line_items=[
-                    {
-                        "price_data": {
-                            "currency": "jpy",
-                            "product_data": {"name": f"Order {order_id}"},
-                            "unit_amount": amount_jpy,
-                        },
-                        "quantity": quantity,
-                    }
-                ],
-                mode="payment",
-                success_url=f"{success_url}?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=cancel_url,
-                metadata={
-                    "user_id": str(user.uid),
-                    "order_id": order_id,
-                    "quantity": quantity,
-                    "internal_id": internal_uid,
-                },
-                customer_email=user.email,
-            )
-
-            # Save initial payment record
-            PaymentHistory.objects.create(
-                user=user,
-                order_id=order_id,
-                quantity=quantity,
-                amount=amount,
-                stripe_session_id=session.id,
-                stripe_payment_status="created",
-            )
-
-            return Response({"checkout_url": session.url}, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response(
-                {"detail": f"Stripe error: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
-# --------- Verify Checkout Session & Confirm Payment ---------
-@extend_schema(
-    summary="Confirm Stripe Checkout Payment",
-    description="Verifies if a Stripe Checkout Session was successful and updates the corresponding PaymentHistory record.",
-    parameters=[
-        OpenApiParameter(name="session_id", required=True, type=str, description="Stripe session ID from success URL"),
-    ],
-    responses={
-        200: inline_serializer(
-            name="PaymentConfirmationResponse",
-            fields={
-                "status": serializers.CharField(),
-                "stripe_order_id": serializers.CharField(),
-                "amount": serializers.DecimalField(max_digits=10, decimal_places=0),
-            }
-        ),
-        202: OpenApiExample("Pending", value={"status": "open", "detail": "Payment not completed yet."}),
-        400: OpenApiExample("Missing session_id", value={"detail": "session_id is required."}),
-    }
-)
-class VerifyStripeSessionAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        session_id = request.query_params.get("session_id")
-        if not session_id:
-            return Response({"detail": "session_id is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            session = stripe.checkout.Session.retrieve(session_id)
-
-            if session.payment_status != "paid":
-                return Response(
-                    {"status": session.payment_status, "detail": "Payment not completed yet."},
-                    status=status.HTTP_202_ACCEPTED,
-                )
-
-            try:
-                payment = PaymentHistory.objects.get(stripe_session_id=session.id)
-            except PaymentHistory.DoesNotExist:
-                return Response(
-                    {"detail": "Payment record not found. Cannot confirm."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            # Update record
-            payment.paid_at = make_aware(datetime.utcfromtimestamp(session.created))
-            payment.stripe_order_id = session.payment_intent
-            payment.stripe_payment_status = session.payment_status
-            payment.stripe_response_data = session
-            payment.save()
-
-            return Response({
-                "status": "paid",
-                "stripe_order_id": session.payment_intent,
-                "amount": float(session.amount_total),  # JPY: no division
-            })
-
-        except Exception as e:
-            return Response({"detail": f"Stripe error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# --------- View for listing payment histories ---------
-@extend_schema(
-    summary="List Payment History",
-    description="Returns payment history for the authenticated user. Admins see all. Supports filters and sorting.",
-    parameters=[
-        OpenApiParameter(name="order_id", required=False, type=str),
-        OpenApiParameter(name="stripe_payment_status", required=False, type=str),
-        OpenApiParameter(name="status", required=False, type=str),
-        OpenApiParameter(name="ordering", required=False, type=str),
-    ],
-    responses=PaymentHistorySerializer(many=True),
-)
-class PaymentHistoryListAPIView(generics.ListAPIView):
+# Payment Views
+class PaymentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PaymentHistorySerializer
-    queryset = PaymentHistory.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['order_id', 'stripe_payment_status', 'status']
-    ordering_fields = ['paid_at', 'amount']
-    ordering = ['-paid_at']
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.kind == "SUPER_ADMIN" or user.is_staff:
-            return PaymentHistory.objects.all()
-        return PaymentHistory.objects.filter(user=user)
+        return PaymentHistory.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def purchase(request):
+    serializer = PurchaseSerializer(data=request.data)
+    if serializer.is_valid():
+        item_name = serializer.validated_data['item_name']
+        amount = serializer.validated_data['amount']
+
+        # Create a local payment record
+        payment = PaymentHistory.objects.create(
+            user=request.user,
+            payment_type='one_time',
+            amount=amount,
+            currency='JPY',
+            status='pending',
+            mode='test' if settings.DEBUG else 'live',
+            created_on=now(),
+            metadata={'item_name': item_name}
+        )
+
+        return Response({
+            'ok': True,
+            'payment': PaymentHistorySerializer(payment).data
+        }, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def subscribe(request):
+    serializer = SubscribeSerializer(data=request.data)
+    if serializer.is_valid():
+        plan = serializer.validated_data['plan']
+
+        # Get the subscription plan
+        subscription_plan = get_object_or_404(SubscriptionPlan, period=plan, is_active=True)
+
+        # Create a local subscription record
+        payment = PaymentHistory.objects.create(
+            user=request.user,
+            payment_type='recurring',
+            subscription_plan=subscription_plan,
+            amount=subscription_plan.amount,
+            currency=subscription_plan.currency,
+            period=subscription_plan.period,
+            status='unverified',
+            mode='test' if settings.DEBUG else 'live',
+            created_on=now(),
+            metadata={'plan': plan}
+        )
+
+        return Response({
+            'ok': True,
+            'payment': PaymentHistorySerializer(payment).data
+        }, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def univapay_charge(request):
+    serializer = UnivapayChargeSerializer(data=request.data)
+    if serializer.is_valid():
+        # try:
+            token_id = _coerce_token_id(serializer.validated_data['transaction_token_id'])
+            item_name = serializer.validated_data['item_name']
+            amount = serializer.validated_data['amount']
+            redirect_endpoint = serializer.validated_data.get('redirect_endpoint')
+            three_ds_mode = serializer.validated_data.get('three_ds_mode')
+
+            univapay = UnivapayClient()
+            idem_key = univapay.new_idempotency_key()
+
+            # Create charge with Univapay
+            resp = univapay.create_charge(
+                transaction_token_id=token_id,
+                amount=amount,
+                currency="JPY",
+                capture=True,
+                metadata={"user": request.user.id, "item_name": item_name},
+                three_ds_mode=three_ds_mode,
+                redirect_endpoint=redirect_endpoint,
+                idempotency_key=idem_key,
+            )
+
+            # Create local payment record
+            payment = PaymentHistory.objects.create(
+                user=request.user,
+                payment_type='one_time',
+                univapay_id=resp.get('id'),
+                store_id=resp.get('store_id'),
+                transaction_token_id=resp.get('transaction_token_id'),
+                amount=amount,
+                currency="JPY",
+                status=resp.get('status', 'pending'),
+                metadata={
+                    'user': request.user.id,
+                    'item_name': item_name,
+                    **resp.get('metadata', {})
+                },
+                mode=resp.get('mode', 'test'),
+                created_on=make_aware(datetime.fromisoformat(resp['created_on'].replace('Z', '+00:00'))),
+                redirect_endpoint=resp.get('redirect', {}).get('endpoint'),
+                redirect_id=resp.get('redirect', {}).get('redirect_id'),
+                raw_json=json.dumps(resp)
+            )
+
+            # Schedule a one-off poll as fallback to webhook
+            if ENABLE_POLL_FALLBACK and payment.univapay_id:
+                _poll_provider_status_later("charge", payment.id, POLL_AFTER_SECONDS)
+
+            return Response({
+                'ok': True,
+                'payment': PaymentHistorySerializer(payment).data,
+                'univapay': {
+                    'charge_id': resp.get('id'),
+                    'status': resp.get('status'),
+                    'mode': resp.get('mode'),
+                    'redirect': resp.get('redirect', {}) or resp.get('three_ds', {}),
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        # except UnivapayError as e:
+        #     return Response({
+        #         'error': 'UnivaPay charge failed',
+        #         'detail': e.body,
+        #         'status': e.status
+        #     }, status=status.HTTP_400_BAD_REQUEST)
+        # except Exception as e:
+        #     return Response({
+        #         'error': 'Unexpected error creating charge',
+        #         'detail': str(e)
+        #     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def univapay_subscription(request):
+    serializer = UnivapaySubscriptionSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            token_id = _coerce_token_id(serializer.validated_data['transaction_token_id'])
+            plan = serializer.validated_data['plan']
+            redirect_endpoint = serializer.validated_data.get('redirect_endpoint')
+            three_ds_mode = serializer.validated_data.get('three_ds_mode')
+
+            # Get subscription plan details
+            subscription_plan = get_object_or_404(SubscriptionPlan, period=plan, is_active=True)
+
+            # Map our plan periods to Univapay periods
+            period_map = {
+                'monthly': 'monthly',
+                '6-month': 'semiannually'
+            }
+            univapay_period = period_map.get(plan, 'monthly')
+
+            univapay = UnivapayClient()
+            idem_key = univapay.new_idempotency_key()
+
+            # Create subscription with Univapay
+            resp = univapay.create_subscription(
+                transaction_token_id=token_id,
+                amount=subscription_plan.amount,
+                currency=subscription_plan.currency,
+                period=univapay_period,
+                metadata={"user": request.user.id, "plan": plan},
+                three_ds_mode=three_ds_mode,
+                redirect_endpoint=redirect_endpoint,
+                idempotency_key=idem_key,
+            )
+
+            # Create local subscription record
+            payment = PaymentHistory.objects.create(
+                user=request.user,
+                payment_type='recurring',
+                subscription_plan=subscription_plan,
+                univapay_id=resp.get('id'),
+                store_id=resp.get('store_id'),
+                transaction_token_id=resp.get('transaction_token_id'),
+                amount=subscription_plan.amount,
+                currency=subscription_plan.currency,
+                period=univapay_period,
+                status=resp.get('status', 'unverified'),
+                metadata={
+                    'user': request.user.username,
+                    'plan': plan,
+                    **resp.get('metadata', {})
+                },
+                mode=resp.get('mode', 'test'),
+                created_on=make_aware(datetime.fromisoformat(resp['created_on'].replace('Z', '+00:00'))),
+                next_payment_due_date=resp.get('next_payment', {}).get('due_date'),
+                next_payment_id=resp.get('next_payment', {}).get('id'),
+                raw_json=json.dumps(resp)
+            )
+
+            # Schedule a one-off poll as fallback to webhook
+            if ENABLE_POLL_FALLBACK and payment.univapay_id:
+                _poll_provider_status_later("subscription", payment.id, POLL_AFTER_SECONDS)
+
+            return Response({
+                'ok': True,
+                'payment': PaymentHistorySerializer(payment).data,
+                'univapay': {
+                    'subscription_id': resp.get('id'),
+                    'status': resp.get('status'),
+                    'mode': resp.get('mode'),
+                    'next_payment': resp.get('next_payment', {}),
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        except UnivapayError as e:
+            return Response({
+                'error': 'UnivaPay subscription failed',
+                'detail': e.body,
+                'status': e.status
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': 'Unexpected error creating subscription',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def univapay_webhook(request):
+    # Verify webhook authentication if configured
+    webhook_auth = getattr(settings, 'UNIVAPAY_WEBHOOK_AUTH', None)
+    if webhook_auth:
+        auth_header = request.headers.get('Authorization', '')
+        expected = f'Bearer {webhook_auth}'
+        if auth_header != expected:
+            return Response({'error': 'Unauthorized webhook'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Parse and validate webhook data
+    serializer = WebhookEventSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    event_type = data.get('event') or data.get('type') or data.get('status')
+    obj = data.get('object')
+    data_obj = data.get('data') or {}
+
+    # Extract IDs from various possible shapes
+    charge_id = None
+    subscription_id = None
+
+    if obj in ('charge', 'charges'):
+        charge_id = data.get('id') or data_obj.get('id')
+    elif obj in ('subscription', 'subscriptions'):
+        subscription_id = data.get('id') or data_obj.get('id')
+    else:
+        # Try nested shapes
+        charge_id = (data.get('charge', {}) or {}).get('id') or data_obj.get('charge_id')
+        subscription_id = (data.get('subscription', {}) or {}).get('id') or data_obj.get('subscription_id')
+
+    new_status = data.get('status') or data_obj.get('status')
+
+    # Update payment status if we found an ID
+    updated = False
+    if charge_id:
+        try:
+            payment = PaymentHistory.objects.get(univapay_id=charge_id)
+            if new_status:
+                payment.status = new_status
+                payment.save(update_fields=['status'])
+                updated = True
+        except PaymentHistory.DoesNotExist:
+            pass
+
+    if subscription_id and not updated:
+        try:
+            payment = PaymentHistory.objects.get(univapay_id=subscription_id)
+            if new_status:
+                payment.status = new_status
+                payment.save(update_fields=['status'])
+                updated = True
+        except PaymentHistory.DoesNotExist:
+            pass
+
+    return Response({'ok': True, 'updated': updated})

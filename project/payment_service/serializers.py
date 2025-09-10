@@ -1,91 +1,77 @@
+# serializers.py
 from rest_framework import serializers
-from .models import SubscriptionPlan
+from django.contrib.auth import authenticate
+from .models import SubscriptionPlan, PaymentHistory
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='profile.full_name', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('uid', 'email', 'full_name')
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
-    billing_interval_label = serializers.CharField(source='get_billing_interval_display', read_only=True)
-
     class Meta:
         model = SubscriptionPlan
-        fields = (
-            "uid",
-            "name",
-            "description",
-            "amount_jpy",
-            "billing_interval",
-            "billing_interval_label",
-            "is_active",
-        )
+        fields = '__all__'
 
 
-class CreateCheckoutSessionSerializer(serializers.Serializer):
-    """
-    Serializer to initiate a Stripe Checkout Session for a subscription.
-    """
-    plan_id = serializers.UUIDField()
-    success_url = serializers.URLField()
-    cancel_url = serializers.URLField()
-
-    def validate(self, attrs):
-        plan_id = attrs.get("plan_id")
-
-        try:
-            plan = SubscriptionPlan.objects.get(uid=plan_id, is_active=True)
-        except SubscriptionPlan.DoesNotExist:
-            raise serializers.ValidationError({
-                "plan_id": "Subscription plan not found or inactive."
-            })
-
-        if not plan.stripe_price_id:
-            raise serializers.ValidationError({
-                "plan_id": "This plan is not linked to Stripe."
-            })
-
-        attrs["plan"] = plan
-        return attrs
+class PurchaseSerializer(serializers.Serializer):
+    item_name = serializers.CharField(max_length=255)
+    amount = serializers.IntegerField(min_value=1)
 
 
-class ConfirmSubscriptionSerializer(serializers.Serializer):
-    """
-    Serializer to confirm Stripe subscription after payment.
-    """
-    session_id = serializers.CharField()
+class SubscribeSerializer(serializers.Serializer):
+    plan = serializers.ChoiceField(choices=['monthly', 'semiannually'])
 
 
+class UnivapayChargeSerializer(serializers.Serializer):
+    transaction_token_id = serializers.CharField(max_length=36)
+    item_name = serializers.CharField(max_length=255)
+    amount = serializers.IntegerField(min_value=1)
+    redirect_endpoint = serializers.URLField(required=False, allow_null=True)
+    three_ds_mode = serializers.ChoiceField(
+        choices=['normal', 'require', 'force', 'skip'],
+        required=False,
+        allow_null=True
+    )
 
 
-
-
-
-
-
-###### Product Payment Serializers ##########
-
-from rest_framework import serializers
-from payment_service.models import PaymentHistory
+class UnivapaySubscriptionSerializer(serializers.Serializer):
+    transaction_token_id = serializers.CharField(max_length=36)
+    plan = serializers.ChoiceField(choices=['monthly', 'semiannually'])
+    redirect_endpoint = serializers.URLField(required=False, allow_null=True)
+    three_ds_mode = serializers.ChoiceField(
+        choices=['normal', 'require', 'force', 'skip'],
+        required=False,
+        allow_null=True
+    )
 
 
 class PaymentHistorySerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    subscription_plan = SubscriptionPlanSerializer(read_only=True)
+
     class Meta:
         model = PaymentHistory
-        fields = [
-            "uid",
-            "user",
-            "order_id",
-            "quantity",
-            "amount",
-            "paid_at",
-            "stripe_session_id",
-            "stripe_order_id",
-            "stripe_payment_status",
-            "stripe_response_data",
-        ]
-        read_only_fields = [
-            "uid",
-            "user",
-            "paid_at",
-            "stripe_session_id",
-            "stripe_order_id",
-            "stripe_payment_status",
-            "stripe_response_data",
-        ]
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')
+
+
+class WebhookEventSerializer(serializers.Serializer):
+    event = serializers.CharField(required=False)
+    type = serializers.CharField(required=False)
+    status = serializers.CharField(required=False)
+    object = serializers.CharField(required=False)
+    data = serializers.DictField(required=False)
+
+    def validate(self, data):
+        # At least one of these should be present
+        if not any(key in data for key in ['event', 'type', 'status']):
+            raise serializers.ValidationError("At least one of 'event', 'type', or 'status' is required.")
+        return data
