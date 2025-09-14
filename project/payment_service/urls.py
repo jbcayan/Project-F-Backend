@@ -10,6 +10,7 @@ from .views import (
     CancelSubscriptionView,
     RefundChargeView,
     PaymentStatusView,
+    SubscriptionStatusView,
     WebhookView,
 )
 
@@ -30,6 +31,9 @@ urlpatterns = [
     path('univapay/cancel-subscription/', CancelSubscriptionView.as_view(), name='univapay-cancel-subscription'),
     path('univapay/refund-charge/', RefundChargeView.as_view(), name='univapay-refund-charge'),
     path('univapay/payment-status/', PaymentStatusView.as_view(), name='univapay-payment-status'),
+    
+    # Subscription status check
+    path('subscription-status/', SubscriptionStatusView.as_view(), name='subscription-status'),
     
     # Webhook
     path('webhook/univapay/', WebhookView.as_view(), name='univapay-webhook'),

@@ -102,6 +102,12 @@ class UnivapayChargeSerializer(serializers.Serializer):
     descriptor_phone_number = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     redirect = RedirectSerializer(required=False)
     three_ds = ThreeDSSerializer(required=False)
+    
+    def validate(self, data):
+        print(f"[DEBUG] UnivapayChargeSerializer.validate - Input data: {data}")
+        validated_data = super().validate(data)
+        print(f"[DEBUG] UnivapayChargeSerializer.validate - Validated data: {validated_data}")
+        return validated_data
 
 
 class UnivapaySubscriptionSerializer(serializers.Serializer):
@@ -118,6 +124,12 @@ class UnivapaySubscriptionSerializer(serializers.Serializer):
     first_charge_authorization_only = serializers.BooleanField(default=False, required=False)
     redirect = RedirectSerializer(required=False)
     three_ds = ThreeDSSerializer(required=False)
+    
+    def validate(self, data):
+        print(f"[DEBUG] UnivapaySubscriptionSerializer.validate - Input data: {data}")
+        validated_data = super().validate(data)
+        print(f"[DEBUG] UnivapaySubscriptionSerializer.validate - Validated data: {validated_data}")
+        return validated_data
 
 
 class PaymentHistorySerializer(serializers.ModelSerializer):
@@ -137,19 +149,105 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
 
 
 class PaymentHistoryListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for list views"""
+    """Comprehensive serializer for list views with all necessary fields"""
     user_email = serializers.EmailField(source='user.email', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     is_successful = serializers.BooleanField(read_only=True)
     
+    # Subscription plan details
+    subscription_plan_name = serializers.CharField(source='subscription_plan.name', read_only=True)
+    subscription_plan_description = serializers.CharField(source='subscription_plan.description', read_only=True)
+    
+    # Transaction token details
+    transaction_token_last_four = serializers.CharField(source='transaction_token.card_last_four', read_only=True)
+    transaction_token_brand = serializers.CharField(source='transaction_token.card_brand', read_only=True)
+    
+    # Formatted amounts
+    amount_formatted = serializers.SerializerMethodField()
+    charged_amount_formatted = serializers.SerializerMethodField()
+    fee_amount_formatted = serializers.SerializerMethodField()
+    
+    # Next payment info for subscriptions
+    next_payment_due_date = serializers.DateField(read_only=True)
+    next_payment_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    next_payment_currency = serializers.CharField(max_length=3, read_only=True)
+    
+    # Cancellation info
+    cancelled_on = serializers.DateTimeField(read_only=True)
+    termination_mode = serializers.CharField(read_only=True)
+    
     class Meta:
         model = PaymentHistory
         fields = [
-            'id', 'user_email', 'payment_type', 'amount', 'currency',
+            # Basic info
+            'id', 'user_email', 'payment_type', 'amount', 'currency', 'amount_formatted',
             'status', 'status_display', 'is_successful', 'mode',
-            'univapay_id', 'created_at'
+            'univapay_id', 'store_id', 'created_at', 'updated_at',
+            
+            # Charged amounts (for one-time payments)
+            'charged_amount', 'charged_currency', 'charged_amount_formatted',
+            'fee_amount', 'fee_currency', 'fee_amount_formatted',
+            
+            # Subscription plan info
+            'subscription_plan', 'subscription_plan_name', 'subscription_plan_description',
+            'period', 'cyclical_period', 'initial_amount', 'initial_amount_formatted',
+            
+            # Transaction token info
+            'transaction_token', 'transaction_token_last_four', 'transaction_token_brand',
+            
+            # Next payment info (for subscriptions)
+            'next_payment_due_date', 'next_payment_amount', 'next_payment_currency',
+            'next_payment_is_paid', 'next_payment_is_last_payment',
+            
+            # Cancellation info
+            'cancelled_on', 'termination_mode',
+            
+            # Error info
+            'error_code', 'error_message', 'error_detail',
+            
+            # Redirect/3DS info
+            'redirect_endpoint', 'three_ds_redirect_endpoint', 'three_ds_mode',
+            
+            # Additional metadata
+            'metadata', 'raw_json'
         ]
         read_only_fields = fields
+    
+    def get_amount_formatted(self, obj):
+        """Format amount with currency"""
+        if obj.amount and obj.currency:
+            try:
+                if obj.currency == 'JPY':
+                    return f"¥{obj.amount:,.0f}"
+                else:
+                    return f"{obj.currency} {obj.amount:,.2f}"
+            except:
+                return str(obj.amount)
+        return None
+    
+    def get_charged_amount_formatted(self, obj):
+        """Format charged amount with currency"""
+        if obj.charged_amount and obj.charged_currency:
+            try:
+                if obj.charged_currency == 'JPY':
+                    return f"¥{obj.charged_amount:,.0f}"
+                else:
+                    return f"{obj.charged_currency} {obj.charged_amount:,.2f}"
+            except:
+                return str(obj.charged_amount)
+        return None
+    
+    def get_fee_amount_formatted(self, obj):
+        """Format fee amount with currency"""
+        if obj.fee_amount and obj.fee_currency:
+            try:
+                if obj.fee_currency == 'JPY':
+                    return f"¥{obj.fee_amount:,.0f}"
+                else:
+                    return f"{obj.fee_currency} {obj.fee_amount:,.2f}"
+            except:
+                return str(obj.fee_amount)
+        return None
 
 
 class WebhookEventSerializer(serializers.Serializer):
@@ -164,10 +262,13 @@ class WebhookEventSerializer(serializers.Serializer):
     subscription = serializers.JSONField(required=False, default=dict)
     
     def validate(self, data):
+        print(f"[DEBUG] WebhookEventSerializer.validate - Input data: {data}")
         if not any(key in data for key in ['event', 'type', 'status', 'id']):
+            print(f"[DEBUG] WebhookEventSerializer.validate - Validation error: Missing required fields")
             raise serializers.ValidationError(
                 "At least one of 'event', 'type', 'status', or 'id' is required."
             )
+        print(f"[DEBUG] WebhookEventSerializer.validate - Validation successful")
         return data
 
 
@@ -194,7 +295,7 @@ class WebhookSubscriptionSerializer(serializers.Serializer):
 
 class CancelSubscriptionSerializer(serializers.Serializer):
     """Serializer for cancelling a subscription"""
-    subscription_id = serializers.UUIDField()
+    subscription_id = serializers.UUIDField(required=False, allow_null=True)
     termination_mode = serializers.ChoiceField(
         choices=[('immediate', 'Immediate'), ('on_next_payment', 'On Next Payment')],
         default='immediate'
@@ -220,8 +321,20 @@ class PurchaseSerializer(serializers.Serializer):
     """Serializer for simple purchase without UnivaPay integration"""
     item_name = serializers.CharField(max_length=255)
     amount = serializers.IntegerField(min_value=1)
+    
+    def validate(self, data):
+        print(f"[DEBUG] PurchaseSerializer.validate - Input data: {data}")
+        validated_data = super().validate(data)
+        print(f"[DEBUG] PurchaseSerializer.validate - Validated data: {validated_data}")
+        return validated_data
 
 
 class SubscribeSerializer(serializers.Serializer):
     """Serializer for simple subscription without UnivaPay integration"""
     plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
+    
+    def validate(self, data):
+        print(f"[DEBUG] SubscribeSerializer.validate - Input data: {data}")
+        validated_data = super().validate(data)
+        print(f"[DEBUG] SubscribeSerializer.validate - Validated data: {validated_data}")
+        return validated_data

@@ -59,16 +59,19 @@ class UnivapayClient:
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
+
             if response.status_code >= 400:
                 raise UnivapayError(response.status_code, response.text)
 
-            return response.json()
+            response_json = response.json()
+            return response_json
         except requests.exceptions.RequestException as e:
             raise UnivapayError(500, str(e))
 
     def create_charge(self, transaction_token_id, amount, currency, metadata=None, only_direct_currency=False,
                       capture_at=None, descriptor=None, descriptor_phone_number=None,
                       redirect_endpoint=None, three_ds_mode='normal', idempotency_key=None, capture=True):
+        
         endpoint = "/charges"
         data = {
             "transaction_token_id": transaction_token_id,
@@ -111,6 +114,7 @@ class UnivapayClient:
                             schedule_settings=None, first_charge_capture_after=None,
                             first_charge_authorization_only=False, redirect_endpoint=None,
                             three_ds_mode='normal', idempotency_key=None):
+        
         endpoint = "/subscriptions"
         data = {
             "transaction_token_id": transaction_token_id,
@@ -150,15 +154,18 @@ class UnivapayClient:
         return self._request('GET', endpoint)
 
     def cancel_subscription(self, subscription_id, termination_mode='immediate', reason=None):
+        
         endpoint = f"/stores/{self.store_id}/subscriptions/{subscription_id}/cancel"
         data = {
             "termination_mode": termination_mode,
         }
         if reason:
             data["reason"] = reason
+        
         return self._request('POST', endpoint, data)
 
     def refund_charge(self, charge_id, amount=None, reason=None, metadata=None, idempotency_key=None):
+        
         endpoint = f"/stores/{self.store_id}/charges/{charge_id}/refunds"
         data = {}
         if amount:
@@ -167,4 +174,5 @@ class UnivapayClient:
             data["reason"] = reason
         if metadata:
             data["metadata"] = metadata
+        
         return self._request('POST', endpoint, data, idempotency_key)
