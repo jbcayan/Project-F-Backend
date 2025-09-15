@@ -1,27 +1,40 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
-    SubscriptionPlanListView,
-    CreateCheckoutSessionView,
-    ConfirmSubscriptionView,
+    SubscriptionPlanViewSet,
+    PaymentHistoryViewSet,
+    TransactionTokenViewSet,
+    WidgetConfigView,
+    UnivapayChargeView,
+    UnivapaySubscriptionView,
     CancelSubscriptionView,
+    RefundChargeView,
+    PaymentStatusView,
     SubscriptionStatusView,
+    WebhookView,
 )
 
-
-
-from .views import CreateStripeCheckoutSessionAPIView, PaymentHistoryListAPIView, VerifyStripeSessionAPIView
-
+router = DefaultRouter()
+router.register(r'subscription-plans', SubscriptionPlanViewSet, basename='subscriptionplan')
+router.register(r'payment-history', PaymentHistoryViewSet, basename='paymenthistory')
+router.register(r'transaction-tokens', TransactionTokenViewSet, basename='transactiontoken')
 
 urlpatterns = [
-    path("subscription/plans/", SubscriptionPlanListView.as_view(), name="list-subscription-plans"),
-    path("subscription/subscribe/", CreateCheckoutSessionView.as_view(), name="create-checkout-session"),
-    path("subscription/confirm/", ConfirmSubscriptionView.as_view(), name="confirm-subscription"),
-    path("subscription/cancel/", CancelSubscriptionView.as_view(), name="cancel-subscription"),
-    path("subscription/status/", SubscriptionStatusView.as_view(), name="subscription-status"),
-
-
-    # Product Payment URLs
-    path("product/create/", CreateStripeCheckoutSessionAPIView.as_view(), name="create-stripe-payment"),
-    path("product/history/", PaymentHistoryListAPIView.as_view(), name="payment-history"),
-    path("product/verify/", VerifyStripeSessionAPIView.as_view(), name="verify-stripe-session"),
+    path('', include(router.urls)),
+    
+    # Widget configuration
+    path('widget-config/', WidgetConfigView.as_view(), name='widget-config'),
+    
+    # Univapay endpoints
+    path('univapay/charge/', UnivapayChargeView.as_view(), name='univapay-charge'),
+    path('univapay/subscription/', UnivapaySubscriptionView.as_view(), name='univapay-subscription'),
+    path('univapay/cancel-subscription/', CancelSubscriptionView.as_view(), name='univapay-cancel-subscription'),
+    path('univapay/refund-charge/', RefundChargeView.as_view(), name='univapay-refund-charge'),
+    path('univapay/payment-status/', PaymentStatusView.as_view(), name='univapay-payment-status'),
+    
+    # Subscription status check
+    path('subscription-status/', SubscriptionStatusView.as_view(), name='subscription-status'),
+    
+    # Webhook
+    path('webhook/univapay/', WebhookView.as_view(), name='univapay-webhook'),
 ]

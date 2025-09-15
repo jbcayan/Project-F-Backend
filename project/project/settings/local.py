@@ -64,7 +64,7 @@ if DATABASE_TYPE == "sqlite":
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': BASE_DIR / '../project_f_db.sqlite3',
         }
     }
 else:  # Assuming PostgreSQL as the other option

@@ -19,7 +19,9 @@ from accounts.rest.serializers.user import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
 )
-from accounts.utils import is_user_subscribed, generate_password_reset_token_url
+from accounts.utils import (
+    # is_user_subscribed,
+    generate_password_reset_token_url, has_premium_access)
 from common.permission import (
     IsAdmin,
     IsSuperAdmin,
@@ -96,7 +98,7 @@ class UserLoginView(generics.CreateAPIView):
             "user": {
                 "email": user.email,
                 "kind": user.kind,
-                "is_subscribed": is_user_subscribed(user),
+                "is_subscribed": has_premium_access(user),
             },
             "refresh": str(refresh),
             "access": str(refresh.access_token),
