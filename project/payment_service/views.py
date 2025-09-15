@@ -1,45 +1,37 @@
-import os
+import hashlib
+import hmac
 import json
+import os
 import threading
 import time
-import hmac
-import hashlib
 from datetime import datetime
-from django.utils.timezone import now, make_aware
-from django.utils import timezone
-
-from rest_framework import status, viewsets, mixins
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
-from drf_spectacular.types import OpenApiTypes
 
 from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.timezone import now, make_aware
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import SubscriptionPlan, PaymentHistory, TransactionToken
 from .serializers import (
     SubscriptionPlanSerializer,
-    PurchaseSerializer, 
-    SubscribeSerializer, 
+    PurchaseSerializer,
+    SubscribeSerializer,
     UnivapayChargeSerializer,
-    UnivapaySubscriptionSerializer, 
+    UnivapaySubscriptionSerializer,
     PaymentHistorySerializer,
     PaymentHistoryListSerializer,
-    WebhookEventSerializer,
-    WebhookChargeSerializer,
-    WebhookSubscriptionSerializer,
     CancelSubscriptionSerializer,
     RefundChargeSerializer,
     PaymentStatusSerializer,
-    CreateTransactionTokenSerializer,
     TransactionTokenSerializer
 )
 from .univapay_client import UnivapayClient, UnivapayError, UNIVAPAY_WEBHOOK_AUTH
@@ -396,12 +388,21 @@ class PaymentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PaymentHistory.objects.filter(
-            user=self.request.user
-        ).select_related(
-            'transaction_token',
-            'subscription_plan'
-        ).order_by('-created_at')
+        if self.request.user.kind in ['ADMIN', 'SUPER_ADMIN']:
+            query_set =  PaymentHistory.objects.filter().select_related(
+                'transaction_token',
+                'subscription_plan'
+            ).order_by('-created_at')
+        elif self.request.user.kind == 'END_USER' :
+            query_set = PaymentHistory.objects.filter(
+                user=self.request.user
+            ).select_related(
+                'transaction_token',
+                'subscription_plan'
+            ).order_by('-created_at')
+        else:
+            query_set = []
+        return query_set
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -446,14 +447,24 @@ class PaymentHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def subscriptions(self, request):
         """Get all subscription records for the user."""
-        
-        subscriptions = PaymentHistory.objects.filter(
-            user=request.user,
-            payment_type='recurring'
-        ).select_related(
-            'transaction_token',
-            'subscription_plan'
-        ).order_by('-created_at')
+
+        if self.request.user.kind in ['ADMIN', 'SUPER_ADMIN']:
+            subscriptions = PaymentHistory.objects.filter(
+                payment_type='recurring'
+            ).select_related(
+                'transaction_token',
+                'subscription_plan'
+            ).order_by('-created_at')
+        elif self.request.user.kind == 'END_USER':
+            subscriptions = PaymentHistory.objects.filter(
+                user=request.user,
+                payment_type='recurring'
+            ).select_related(
+                'transaction_token',
+                'subscription_plan'
+            ).order_by('-created_at')
+        else:
+            subscriptions = []
         
         
         serializer = PaymentHistoryListSerializer(subscriptions, many=True)
@@ -1816,7 +1827,7 @@ class SubscriptionStatusView(APIView):
         """
         Calculate when the user's premium access expires based on subscription details.
         """
-        from datetime import timedelta, date
+        from datetime import date
         
         # If subscription is cancelled, access expires at the end of current billing period
         if subscription.status == 'canceled' and subscription.cancelled_on:
