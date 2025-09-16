@@ -68,49 +68,53 @@ def has_premium_access(user):
 
     current_time = now()
 
-    # If subscription is cancelled, check if we're still within the paid period
-    if subscription.status == 'canceled':
-        # For cancelled subscriptions, check if we're still within the current billing period
-        if subscription.cancelled_on:
-            # Calculate the end of the current billing period
-            period_end = get_access_expiry_date(subscription)
-            if period_end:
-                # Ensure both are datetime objects for comparison
-                if isinstance(period_end, date) and not isinstance(period_end, datetime):
-                    period_end = make_aware(datetime.combine(period_end, datetime.min.time()))
+    try:
+        # If subscription is cancelled, check if we're still within the paid period
+        if subscription.status == 'canceled':
+            # For cancelled subscriptions, check if we're still within the current billing period
+            if subscription.cancelled_on:
+                # Calculate the end of the current billing period
+                period_end = get_access_expiry_date(subscription)
+                if period_end:
+                    # Ensure both are datetime objects for comparison
+                    if isinstance(period_end, date) and not isinstance(period_end, datetime):
+                        period_end = make_aware(datetime.combine(period_end, datetime.min.time()))
 
-                if current_time < period_end:
-                    return True
-        return False
+                    if current_time < period_end:
+                        return True
+            return False
 
-    # If subscription failed or expired, no access
-    if subscription.status in ['failed', 'expired']:
-        return False
+        # If subscription failed or expired, no access
+        if subscription.status in ['failed', 'expired']:
+            return False
 
-    # For active subscriptions, check if we're within the current period
-    if subscription.status in ['current', 'active', 'unverified']:
-        # For 'current' status, user should have premium access
-        if subscription.status == 'current':
-            return True
-
-        # For 'active' status, check if we're within the current billing period
-        if subscription.status == 'active':
-            period_end = get_access_expiry_date(subscription)
-            if period_end:
-                # Ensure both are datetime objects for comparison
-                if isinstance(period_end, date) and not isinstance(period_end, datetime):
-                    period_end = make_aware(datetime.combine(period_end, datetime.min.time()))
-
-                if current_time < period_end:
-                    print(
-                        f"[DEBUG] SubscriptionStatusView._has_premium_access - Active subscription within period until {period_end}")
-                    return True
-
-        # For unverified subscriptions, give 24 hours grace period
-        if subscription.status == 'unverified':
-            if subscription.created_at and (current_time - subscription.created_at) < timedelta(hours=24):
-                print(f"[DEBUG] SubscriptionStatusView._has_premium_access - Unverified but within 24h grace period")
+        # For active subscriptions, check if we're within the current period
+        if subscription.status in ['current', 'active', 'unverified']:
+            # For 'current' status, user should have premium access
+            if subscription.status == 'current':
                 return True
+
+            # For 'active' status, check if we're within the current billing period
+            if subscription.status == 'active':
+                period_end = get_access_expiry_date(subscription)
+                if period_end:
+                    # Ensure both are datetime objects for comparison
+                    if isinstance(period_end, date) and not isinstance(period_end, datetime):
+                        period_end = make_aware(datetime.combine(period_end, datetime.min.time()))
+
+                    if current_time < period_end:
+                        print(
+                            f"[DEBUG] SubscriptionStatusView._has_premium_access - Active subscription within period until {period_end}")
+                        return True
+
+            # For unverified subscriptions, give 24 hours grace period
+            if subscription.status == 'unverified':
+                if subscription.created_at and (current_time - subscription.created_at) < timedelta(hours=24):
+                    print(
+                        f"[DEBUG] SubscriptionStatusView._has_premium_access - Unverified but within 24h grace period")
+                    return True
+    except:
+        return False
 
     return False
 
