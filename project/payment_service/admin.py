@@ -6,13 +6,13 @@ from .models import SubscriptionPlan, PaymentHistory, TransactionToken
 class SubscriptionPlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'amount', 'currency', 'period', 'is_active', 'created_at')
     list_filter = ('is_active', 'period', 'currency', 'created_at')
-    search_fields = ('name', 'description')
+    search_fields = ('name',)
     ordering = ('-created_at',)
     list_per_page = 20
     
     fieldsets = (
         ('Plan Information', {
-            'fields': ('name', 'description', 'is_active')
+            'fields': ('name', 'is_active')
         }),
         ('Pricing', {
             'fields': ('amount', 'currency', 'period')
