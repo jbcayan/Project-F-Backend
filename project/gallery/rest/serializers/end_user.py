@@ -11,7 +11,7 @@ from gallery.tasks import handle_edit_request_file, send_mail_task
 class SimpleGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = Gallery
-        fields = ["uid", "title", "code", "description", "file_type", "file"]
+        fields = ["uid", "title", "code", "description", "file_type", "file", "price"]
 
 class EditRequestMinimalListSerializer(serializers.ModelSerializer):
     media_files = SimpleGallerySerializer(many=True, read_only=True)
