@@ -73,11 +73,17 @@ jobs:
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_STORAGE_BUCKET_NAME=${{ secrets.AWS_STORAGE_BUCKET_NAME }}" >> $GITHUB_ENV
           echo "AWS_S3_REGION_NAME=${{ secrets.AWS_S3_REGION_NAME }}" >> $GITHUB_ENV
-          echo "STRIPE_LIVE_MODE=${{ secrets.STRIPE_LIVE_MODE }}" >> $GITHUB_ENV
-          echo "STRIPE_TEST_SECRET_KEY=${{ secrets.STRIPE_TEST_SECRET_KEY }}" >> $GITHUB_ENV
-          echo "STRIPE_TEST_PUBLIC_KEY=${{ secrets.STRIPE_TEST_PUBLIC_KEY }}" >> $GITHUB_ENV
-          echo "STRIPE_LIVE_SECRET_KEY=${{ secrets.STRIPE_LIVE_SECRET_KEY }}" >> $GITHUB_ENV
-          echo "STRIPE_LIVE_PUBLIC_KEY=${{ secrets.STRIPE_LIVE_PUBLIC_KEY }}" >> $GITHUB_ENV
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> $GITHUB_ENV
+          echo "UNIVAPAY_APP_TOKEN=${{ secrets.UNIVAPAY_APP_TOKEN }}" >> $GITHUB_ENV
+          echo "UNIVAPAY_APP_SECRET=${{ secrets.UNIVAPAY_APP_SECRET }}" >> $GITHUB_ENV
+          echo "UNIVAPAY_BASE_URL=${{ secrets.UNIVAPAY_BASE_URL }}" >> $GITHUB_ENV
+          echo "UNIVAPAY_WEBHOOK_AUTH=${{ secrets.UNIVAPAY_WEBHOOK_AUTH }}" >> $GITHUB_ENV
+          echo "UNIVAPAY_STORE_ID=${{ secrets.UNIVAPAY_STORE_ID }}" >> $GITHUB_ENV
+#          echo "STRIPE_LIVE_MODE=${{ secrets.STRIPE_LIVE_MODE }}" >> $GITHUB_ENV
+#          echo "STRIPE_TEST_SECRET_KEY=${{ secrets.STRIPE_TEST_SECRET_KEY }}" >> $GITHUB_ENV
+#          echo "STRIPE_TEST_PUBLIC_KEY=${{ secrets.STRIPE_TEST_PUBLIC_KEY }}" >> $GITHUB_ENV
+#          echo "STRIPE_LIVE_SECRET_KEY=${{ secrets.STRIPE_LIVE_SECRET_KEY }}" >> $GITHUB_ENV
+#          echo "STRIPE_LIVE_PUBLIC_KEY=${{ secrets.STRIPE_LIVE_PUBLIC_KEY }}" >> $GITHUB_ENV
 
       - name: Run migrate
         run: |
