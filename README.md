@@ -1,6 +1,6 @@
 # 🧩 Media Service Platform API
 
-A Django REST Framework (DRF)-based backend for a platform where users can browse a gallery (images, audio, video), request changes to media files, chat with admins in real-time, and pay for services via Stripe.
+A Django REST Framework (DRF)-based backend for a platform where users can browse a gallery (images, audio, video), request changes to media files, chat with admins in real-time, and pay for services.
 
 ---
 

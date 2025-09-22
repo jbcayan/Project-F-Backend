@@ -10,7 +10,7 @@ admin.site.index_title = "Welcome to Albi Admin Dashboard Panel"
 from .health_check import HealthCheckView
 
 urlpatterns = [
-    path('', HealthCheckView.as_view(), name='health_check'),
+    path('/health', HealthCheckView.as_view(), name='health_check'),
     path('admin/', admin.site.urls),
     path('users', include('accounts.rest.urls.user')),
     path('gallery', include('gallery.rest.urls')),
