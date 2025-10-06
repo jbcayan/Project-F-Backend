@@ -1,39 +1,63 @@
-# Create a .env file into the project root directory where manage.py is located
+# Create a .env file in the project root (same directory as manage.py)
 
-SECRET_KEY="django-insecure-1@!@g5@_!@!@_!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!@!"
-
-DEBUG=True
-ALLOWED_HOSTS="localhost, 127.0.0.1"
+SECRET_KEY="your-django-secret-key"
 
 DEBUG=True
 ALLOWED_HOSTS="localhost, 127.0.0.1"
 
-# local, development, production
+ 
+
+# local | development | production
 DJANGO_ENV="local"
 
-DATABASE_TYPE="postgres"
+DATABASE_TYPE="sqlite"  # sqlite | postgres
 DB_NAME="project-f-db"
 DB_USER="postgres"
-DB_PASSWORD="2244"
+DB_PASSWORD=""
 DB_PORT="5432"
-DB_HOST="host.docker.internal"
-#DB_HOST="localhost"
+DB_HOST="localhost"
 
 
 EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST="smtp.gmail.com"
 EMAIL_USE_TLS=True
 EMAIL_PORT=587
-EMAIL_HOST_USER="jbc.@gmail.com"
-EMAIL_HOST_PASSWORD=""
+EMAIL_HOST_USER="your-email@example.com"
+EMAIL_HOST_PASSWORD="your-email-password"
+DEFAULT_FROM_EMAIL="no-reply@example.com"
+
+TIME_ZONE="UTC"
+
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+AWS_ACCESS_KEY_ID=""
+AWS_SECRET_ACCESS_KEY=""
+AWS_STORAGE_BUCKET_NAME=""
+AWS_S3_REGION_NAME="ap-south-1"
+
+FRONTEND_URL="https://app.example.com"
 
 
 
-# UnivaPay (TEST creds for sandbox)
+# Univapay (set credentials via your Univapay dashboard)
 UNIVAPAY_APP_TOKEN=
 UNIVAPAY_APP_SECRET=
-# Base URL (docs use this; mode is determined by your token)
 UNIVAPAY_BASE_URL=https://api.univapay.com
-# Optional: simple shared token that UnivaPay will echo in webhook header "authorization"
-UNIVAPAY_WEBHOOK_AUTH=some-long-random-string
+UNIVAPAY_WEBHOOK_AUTH=
 UNIVAPAY_STORE_ID=
+
+# =========================
+# Univapay Configuration
+# =========================
+# Select mode: 'test' or 'live'
+UNIVAPAY_MODE=test  # test | live
+# Optional test overrides (used when UNIVAPAY_MODE=test or for forced-test users)
+# UNIVAPAY_TEST_APP_TOKEN=
+# UNIVAPAY_TEST_APP_SECRET=
+# UNIVAPAY_TEST_STORE_ID=
+# UNIVAPAY_TEST_BASE_URL=https://api.univapay.com
+# Forced-test users: comma-separated entries of "email:password"
+# Example:
+# TEST_PAYMENT_USERS=user1@example.com:ExamplePass123!,user2@example.com:ExamplePass456!
+TEST_PAYMENT_USERS=jbc.nayeem@gmail.com:ProjectF@2025,jbc.ayan17@gmail.com:ProjectF@2025

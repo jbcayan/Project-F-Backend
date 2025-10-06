@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 
 from django.conf import settings
+import os
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -34,7 +35,13 @@ from .serializers import (
     PaymentStatusSerializer,
     TransactionTokenSerializer
 )
-from .univapay_client import UnivapayClient, UnivapayError, UNIVAPAY_WEBHOOK_AUTH
+from .univapay_client import (
+    UnivapayClient,
+    UnivapayError,
+    UNIVAPAY_WEBHOOK_AUTH,
+    UNIVAPAY_TEST_STORE_ID,
+    UNIVAPAY_TEST_BASE_URL,
+)
 
 # Constants
 POLL_AFTER_SECONDS = 30
@@ -43,6 +50,25 @@ ENABLE_POLL_FALLBACK = True
 
 
 # Helper functions
+# Emails that should always use Univapay test mode even in live are
+# configured via env TEST_PAYMENT_USERS (supports email or email:password pairs)
+def _load_forced_test_emails_from_env():
+    raw = os.getenv('TEST_PAYMENT_USERS') or os.getenv('TEST_Payment_USERS') or ''
+    entries = [e.strip() for e in raw.split(',') if e.strip()]
+    emails = set()
+    for entry in entries:
+        email = entry.split(':', 1)[0].strip()
+        if email:
+            emails.add(email.lower())
+    return emails
+
+FORCED_TEST_EMAILS = _load_forced_test_emails_from_env()
+
+def _is_forced_test_user(user):
+    try:
+        return (user and getattr(user, 'email', None) and user.email.lower() in FORCED_TEST_EMAILS)
+    except Exception:
+        return False
 def _coerce_token_id(val):
     """Accept a string or a dict and return a trimmed string id."""
     if val is None:
@@ -263,12 +289,17 @@ class WidgetConfigView(APIView):
     def get(self, request):
         """Return widget configuration for frontend initialization."""
         
+        # Mode depends on UNIVAPAY_MODE env, but force test for specific users
+        forced_test = _is_forced_test_user(request.user)
+        env_mode = os.getenv('UNIVAPAY_MODE', 'test').lower()
+        is_test = forced_test or env_mode == 'test'
+
         config = {
-            'app_token': os.getenv('UNIVAPAY_APP_TOKEN', ''),
-            'mode': 'test' if settings.DEBUG else 'live',
-            'store_id': os.getenv('UNIVAPAY_STORE_ID', ''),
+            'app_token': os.getenv('UNIVAPAY_TEST_APP_TOKEN' if is_test else 'UNIVAPAY_APP_TOKEN', ''),
+            'mode': 'test' if is_test else 'live',
+            'store_id': os.getenv('UNIVAPAY_TEST_STORE_ID' if is_test else 'UNIVAPAY_STORE_ID', ''),
             'widget_url': 'https://widget.univapay.com/client/checkout.js',
-            'api_endpoint': os.getenv('UNIVAPAY_BASE_URL', 'https://api.univapay.com')
+            'api_endpoint': os.getenv('UNIVAPAY_TEST_BASE_URL', os.getenv('UNIVAPAY_BASE_URL', 'https://api.univapay.com')) if is_test else os.getenv('UNIVAPAY_BASE_URL', 'https://api.univapay.com')
         }
         
         return Response(config)
@@ -943,7 +974,7 @@ class UnivapayChargeView(APIView):
                     # Token doesn't exist in our DB, but we can still proceed with the charge
                     pass
                 
-                univapay = UnivapayClient()
+                univapay = UnivapayClient(force_test=_is_forced_test_user(request.user))
                 idem_key = univapay.new_idempotency_key()
 
                 # Create charge with Univapay
@@ -1158,7 +1189,7 @@ class UnivapaySubscriptionView(APIView):
                     # Token doesn't exist in our DB, but we can still proceed
                     pass
                 
-                univapay = UnivapayClient()
+                univapay = UnivapayClient(force_test=_is_forced_test_user(request.user))
                 idem_key = univapay.new_idempotency_key()
 
                 # Create subscription with Univapay
@@ -1412,7 +1443,7 @@ class CancelSubscriptionView(APIView):
                         'subscription_id': str(subscription_id)
                     }, status=status.HTTP_404_NOT_FOUND)
                 
-                univapay = UnivapayClient()
+                univapay = UnivapayClient(force_test=_is_forced_test_user(request.user))
 
                 # Cancel subscription with Univapay
                 resp = univapay.cancel_subscription(
@@ -1494,7 +1525,7 @@ class RefundChargeView(APIView):
                 reason = serializer.validated_data.get('reason', '')
                 metadata = serializer.validated_data.get('metadata', {})
 
-                univapay = UnivapayClient()
+                univapay = UnivapayClient(force_test=_is_forced_test_user(request.user))
                 idem_key = univapay.new_idempotency_key()
 
                 # Refund charge with Univapay

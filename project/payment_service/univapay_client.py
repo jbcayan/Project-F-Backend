@@ -11,6 +11,13 @@ UNIVAPAY_APP_SECRET = os.getenv('UNIVAPAY_APP_SECRET', '')
 UNIVAPAY_WEBHOOK_AUTH = os.getenv('UNIVAPAY_WEBHOOK_AUTH', '')
 UNIVAPAY_STORE_ID = os.getenv('UNIVAPAY_STORE_ID', '')
 UNIVAPAY_BASE_URL = os.getenv('UNIVAPAY_BASE_URL', 'https://api.univapay.com')
+UNIVAPAY_MODE = os.getenv('UNIVAPAY_MODE', 'test').lower()  # 'test' or 'live'
+
+# Optional: separate TEST credentials for forced test mode in live
+UNIVAPAY_TEST_APP_TOKEN = os.getenv('UNIVAPAY_TEST_APP_TOKEN', UNIVAPAY_APP_TOKEN)
+UNIVAPAY_TEST_APP_SECRET = os.getenv('UNIVAPAY_TEST_APP_SECRET', UNIVAPAY_APP_SECRET)
+UNIVAPAY_TEST_STORE_ID = os.getenv('UNIVAPAY_TEST_STORE_ID', UNIVAPAY_STORE_ID)
+UNIVAPAY_TEST_BASE_URL = os.getenv('UNIVAPAY_TEST_BASE_URL', UNIVAPAY_BASE_URL)
 
 
 class UnivapayError(Exception):
@@ -21,13 +28,24 @@ class UnivapayError(Exception):
 
 
 class UnivapayClient:
-    def __init__(self):
-        self.base_url = UNIVAPAY_BASE_URL
-        self.secret_key = UNIVAPAY_APP_SECRET
-        self.jwt_token = UNIVAPAY_APP_TOKEN
-        self.store_id = UNIVAPAY_STORE_ID
+    def __init__(self, force_test: bool = False):
+        # Determine target mode: forced test takes precedence; else UNIVAPAY_MODE
+        effective_mode = 'test' if force_test else ('test' if UNIVAPAY_MODE == 'test' else 'live')
 
-        if not all([self.secret_key, self.jwt_token, self.store_id]):
+        if effective_mode == 'test':
+            self.base_url = UNIVAPAY_TEST_BASE_URL
+            self.secret_key = UNIVAPAY_TEST_APP_SECRET
+            self.jwt_token = UNIVAPAY_TEST_APP_TOKEN
+            self.store_id = UNIVAPAY_TEST_STORE_ID
+            self.mode = 'test'
+        else:
+            self.base_url = UNIVAPAY_BASE_URL
+            self.secret_key = UNIVAPAY_APP_SECRET
+            self.jwt_token = UNIVAPAY_APP_TOKEN
+            self.store_id = UNIVAPAY_STORE_ID
+            self.mode = 'live'
+
+        if not all([self.secret_key, self.jwt_token, self.store_id, self.base_url]):
             raise ValueError("Univapay credentials not configured properly")
 
         self.auth_header = f"Bearer {self.secret_key}.{self.jwt_token}"
